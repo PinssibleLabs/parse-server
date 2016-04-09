@@ -35,12 +35,12 @@ export default class MongoCollection {
       });
   }
 
+   findCursor(query, { skip, limit, sort } = {}) {
+     return this._mongoCollection
+      .find(query, { skip, limit, sort });
+   }
 
 
-findCursor(query, { skip, limit, sort } = {}) {
-  return this._mongoCollection
-      .find(query, { skip, limit, sort })
-}
 
 
   _rawFind(query, { skip, limit, sort } = {}) {
