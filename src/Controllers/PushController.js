@@ -101,6 +101,76 @@ export class PushController extends AdaptableController {
     });
   }
 
+sendPushInCursor(body = {}, where = {}, config, auth, wait) {
+  var pushAdapter = this.adapter;
+  if (!this.pushIsAvailable) {
+    throw new Parse.Error(Parse.Error.PUSH_MISCONFIGURED,
+        'Push adapter is not available');
+  }
+  PushController.validatePushType(where, pushAdapter.getValidPushTypes());
+  // Replace the expiration_time with a valid Unix epoch milliseconds time
+  body['expiration_time'] = PushController.getExpirationTime(body);
+  // TODO: If the req can pass the checking, we return immediately instead of waiting
+  // pushes to be sent. We probably change this behaviour in the future.
+  let badgeUpdate = () => {
+    return Promise.resolve();
+  }
+  if (body.data && body.data.badge) {
+    let badge = body.data.badge;
+    let op = {};
+    if (typeof badge == 'string' && badge.toLowerCase() === 'increment') {
+      op = { $inc: { badge: 1 } }
+    } else if (Number(badge)) {
+      op = { $set: { badge: badge } }
+    } else {
+      throw "Invalid value for badge, expected number or 'Increment'";
+    }
+    let updateWhere = deepcopy(where);
+
+    badgeUpdate = () => {
+      let badgeQuery = new RestQuery(config, auth, '_Installation', updateWhere);
+      return badgeQuery.buildRestWhere().then(() => {
+            let restWhere = deepcopy(badgeQuery.restWhere);
+      // Force iOS only devices
+      if (!restWhere['$and']) {
+        restWhere['$and'] = [badgeQuery.restWhere];
+      }
+      restWhere['$and'].push({
+        'deviceType': 'ios'
+      });
+      return config.database.adaptiveCollection("_Installation")
+              .then(coll => coll.updateMany(restWhere, op));
+    })
+  }
+}
+let pushStatus = pushStatusHandler(config);
+return Promise.resolve().then(() => {
+      return pushStatus.setInitial(body, where);
+}).then(() => {
+  return badgeUpdate();
+}).then(() => {
+  return rest.find(config, auth, '_Installation', where);
+}).then((response) => {
+  if (!response.results) {
+  return Promise.reject({error: 'PushController: no results in query'})
+}
+pushStatus.setRunning(response.results);
+return this.sendToAdapter(body, response.results, pushStatus, config);
+}).then((results) => {
+  return pushStatus.complete(results);
+}).catch((err) => {
+  pushStatus.fail(err);
+return Promise.reject(err);
+});
+}
+
+ pushNotification(pushStatus,body,installations,done)
+{
+
+}
+
+
+
   sendToAdapter(body, installations, pushStatus, config) {
     if (body.data && body.data.badge && typeof body.data.badge == 'string' && body.data.badge.toLowerCase() == "increment") {
       // Collect the badges to reduce the # of calls
@@ -156,6 +226,10 @@ export class PushController extends AdaptableController {
     }
     return expirationTime.valueOf();
   }
+
+
+
+
 
   expectedAdapterType() {
     return PushAdapter;

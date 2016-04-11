@@ -28,9 +28,9 @@ export class MongoStorageAdapter {
 
     // parsing and re-formatting causes the auth value (if there) to get URI
     // encoded
-    const encodedUri = formatUrl(parseUrl(this._uri));
+    //const encodedUri = formatUrl(parseUrl(this._uri));
 
-    this.connectionPromise = MongoClient.connect(encodedUri, this._options).then(database => {
+    this.connectionPromise = MongoClient.connect(this._uri, this._options).then(database => {
       this.database = database;
     });
     return this.connectionPromise;
