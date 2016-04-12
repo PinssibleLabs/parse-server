@@ -15,7 +15,7 @@ export class PushRouter extends PromiseRouter {
     }
 
     let where = PushRouter.getQueryCondition(req);
-    pushController.sendPush(req.body, where, req.config, req.auth);
+    pushController.sendPushInCursor(req.body, where, req.config, req.auth);
     return Promise.resolve({
       response: {
         'result': true
