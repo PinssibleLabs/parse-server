@@ -154,8 +154,8 @@ return Promise.resolve().then(() => {
 {
   var pageSize = 10000;
   var i = 0;
-  var kue = require('kue')
-      , queue = kue.createQueue();
+  //var kue = require('kue')
+  //    , queue = kue.createQueue();
 
   var cache = [];
   // Execute the each command, triggers for each document
@@ -164,21 +164,24 @@ return Promise.resolve().then(() => {
     if(item!=null){
       i++;
       cache.push(item);
-      console.log("item"+i);
+    //  console.log("item"+i);
     }
 
     if (i / pageSize > 0 && i % pageSize == 0) {
       var installations = cache;
       cache=[];
-      var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
-      {
-        if( !err ) console.log( pushJbo.id );
-      });
-      queue.process('push', function(job, done){
+      //var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
+      //{
+      //  if( !err ) console.log( pushJbo.id );
+      //});
+      //queue.process('push', function(job, done){
+      //
+      //  pushStatus.setRunning(job.data.installation);
+      //  PushController.pushNotification(pushAdapter,job.data.databody,job.data.installation,done);
+      //});
 
-        pushStatus.setRunning(response.results);
-        PushController.pushNotification(pushAdapter,job.data.databody,job.data.installation,done);
-      });
+    //  pushStatus.setRunning(installations);
+      PushController.pushNotification(pushAdapter,pushStatus,body,installations);
 
     }
     // If the item is null then the cursor is exhausted/empty and closed
@@ -194,17 +197,19 @@ return Promise.resolve().then(() => {
           console.log("have no more installations");
         }else
         {
-          var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
-          {
-            if( !err ) console.log("jobid"+ pushJbo.id );
-          });
+          //var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
+          //{
+          //  if( !err ) console.log("jobid"+ pushJbo.id );
+          //});
 
         }
-        queue.process('push', function(job, done){
-
-
-          PushController.pushNotification(pushAdapter,pushStatus,job.data.databody,job.data.installation,done);
-        });
+        //queue.process('push', function(job, done){
+        //
+        //  pushStatus.setRunning(job.data.installation);
+        //  PushController.pushNotification(pushAdapter,pushStatus,job.data.databody,job.data.installation,done);
+        //});
+        //pushStatus.setRunning(installations);
+        PushController.pushNotification(pushAdapter,pushStatus,body,installations);
 
 
       }
@@ -214,7 +219,7 @@ return Promise.resolve().then(() => {
 });
 }
 
-static pushNotification(pushAdapter,pushStatus,body,installations,done){
+static pushNotification(pushAdapter,pushStatus,body,installations){
 
   pushStatus.setRunning(installations);
   if (body.data && body.data.badge && typeof body.data.badge == 'string' && body.data.badge.toLowerCase() == "increment") {
@@ -243,11 +248,11 @@ return Promise.all(promises);
 }
 
 return pushAdapter.send(body, installations).then((results) => {
-      return pushStatus.complete(results).then(done());
+      return pushStatus.complete(results);//.then(done())
 }).
 catch((err) => {
   pushStatus.fail(err);
-return Promise.reject(err).then(done());
+return Promise.reject(err);
 });
 
 }
