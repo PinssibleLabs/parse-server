@@ -383,6 +383,16 @@ DatabaseController.prototype.mongoFind = function(className, query, options = {}
     .then(collection => collection.find(query, options));
 };
 
+
+// Get a cursor of one collection .
+// This used for large dataquery
+// to avoid Mongo-format dependencies.
+// Returns a promise that resolves to a cursor.
+DatabaseController.prototype.findCursor = function(className, query, options = {}) {
+  return this.adaptiveCollection(className)
+          .then(collection => collection.findCursor(query, options));
+};
+
 // Deletes everything in the database matching the current collectionPrefix
 // Won't delete collections in the system namespace
 // Returns a promise.

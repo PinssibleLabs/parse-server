@@ -149,23 +149,111 @@ return Promise.resolve().then(() => {
 }).then(() => {
   return badgeUpdate();
 }).then(() => {
-  return rest.find(config, auth, '_Installation', where);
-}).then((response) => {
-  if (!response.results) {
-  return Promise.reject({error: 'PushController: no results in query'})
-}
-pushStatus.setRunning(response.results);
-return this.sendToAdapter(body, response.results, pushStatus, config);
-}).then((results) => {
-  return pushStatus.complete(results);
-}).catch((err) => {
-  pushStatus.fail(err);
-return Promise.reject(err);
+  return  config.database.findCursor("_Installation", where);
+}).then(function(cursor)
+{
+  var pageSize = 10000;
+  var i = 0;
+  //var kue = require('kue')
+  //    , queue = kue.createQueue();
+
+  var cache = [];
+  // Execute the each command, triggers for each document
+  cursor.each(function (err, item) {
+
+    if(item!=null){
+      i++;
+      cache.push(item);
+    //  console.log("item"+i);
+    }
+
+    if (i / pageSize > 0 && i % pageSize == 0) {
+      var installations = cache;
+      cache=[];
+      //var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
+      //{
+      //  if( !err ) console.log( pushJbo.id );
+      //});
+      //queue.process('push', function(job, done){
+      //
+      //  pushStatus.setRunning(job.data.installation);
+      //  PushController.pushNotification(pushAdapter,job.data.databody,job.data.installation,done);
+      //});
+
+    //  pushStatus.setRunning(installations);
+      PushController.pushNotification(pushAdapter,pushStatus,body,installations);
+
+    }
+    // If the item is null then the cursor is exhausted/empty and closed
+    else {
+      if (item == null) {
+
+        // Show that the cursor is closed
+
+        var installations = cache;
+        cache=[];
+        if(installations.length==0)
+        {
+          console.log("have no more installations");
+        }else
+        {
+          //var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
+          //{
+          //  if( !err ) console.log("jobid"+ pushJbo.id );
+          //});
+
+        }
+        //queue.process('push', function(job, done){
+        //
+        //  pushStatus.setRunning(job.data.installation);
+        //  PushController.pushNotification(pushAdapter,pushStatus,job.data.databody,job.data.installation,done);
+        //});
+        //pushStatus.setRunning(installations);
+        PushController.pushNotification(pushAdapter,pushStatus,body,installations);
+
+
+      }
+    }
+
+  });
 });
 }
 
- pushNotification(pushStatus,body,installations,done)
-{
+static pushNotification(pushAdapter,pushStatus,body,installations){
+
+  pushStatus.setRunning(installations);
+  if (body.data && body.data.badge && typeof body.data.badge == 'string' && body.data.badge.toLowerCase() == "increment") {
+    // Collect the badges to reduce the # of calls
+    let badgeInstallationsMap = installations.reduce((map, installation) => {
+          let badge = installation.badge;
+    if (installation.deviceType != "ios") {
+      badge = UNSUPPORTED_BADGE_KEY;
+    }
+    map[badge+''] = map[badge+''] || [];
+    map[badge+''].push(installation);
+    return map;
+  }, {});
+
+  // Map the on the badges count and return the send result
+  let promises = Object.keys(badgeInstallationsMap).map((badge) => {
+        let payload = deepcopy(body);
+  if (badge == UNSUPPORTED_BADGE_KEY) {
+    delete payload.data.badge;
+  } else {
+    payload.data.badge = parseInt(badge);
+  }
+  return pushAdapter.send(payload, badgeInstallationsMap[badge]);
+});
+return Promise.all(promises);
+}
+
+return pushAdapter.send(body, installations).then((results) => {
+      return pushStatus.complete(results);//.then(done())
+}).
+catch((err) => {
+  pushStatus.fail(err);
+return Promise.reject(err);
+});
 
 }
 
