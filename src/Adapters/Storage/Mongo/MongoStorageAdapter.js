@@ -4,8 +4,8 @@ import MongoSchemaCollection from './MongoSchemaCollection';
 import {parse as parseUrl, format as formatUrl} from '../../../vendor/mongodbUrl';
 
 let mongodb = require('mongodb');
-let MongoClient = mongodb.MongoClient;
-
+let MongoClient = mongodb.MongoClient
+, Logger = require('mongodb').Logger;
 const MongoSchemaCollectionName = '_SCHEMA';
 
 export class MongoStorageAdapter {
@@ -26,25 +26,30 @@ export class MongoStorageAdapter {
       return this.connectionPromise;
     }
 
+
     // parsing and re-formatting causes the auth value (if there) to get URI
     // encoded
     //const encodedUri = formatUrl(parseUrl(this._uri));
-
+   // Logger.setLevel('debug');
+    console.log('MongoStorageAdapter-->connect:url'+this._uri);
     this.connectionPromise = MongoClient.connect(this._uri, this._options).then(database => {
+
       this.database = database;
     });
+
     return this.connectionPromise;
   }
 
   collection(name: string) {
     return this.connect().then(() => {
+          console.log('MongoStorageAdapter-->collection:collection='+name);
       return this.database.collection(name);
     });
   }
 
   adaptiveCollection(name: string) {
     return this.connect()
-      .then(() => this.database.collection(name))
+      .then(() => this.database.collection(name)  )
       .then(rawCollection => new MongoCollection(rawCollection));
   }
 

@@ -19,7 +19,9 @@ var triggers = require('./triggers');
 function find(config, auth, className, restWhere, restOptions) {
   enforceRoleSecurity('find', className, auth);
   var query = new RestQuery(config, auth, className,
-                            restWhere, restOptions);
+                  restWhere, restOptions);
+  console.log('rest-->find');
+  console.log(config);
   return query.execute();
 }
 
