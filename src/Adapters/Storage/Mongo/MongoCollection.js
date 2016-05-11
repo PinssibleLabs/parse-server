@@ -14,6 +14,7 @@ export default class MongoCollection {
   // This could be improved a lot but it's not clear if that's a good
   // idea. Or even if this behavior is a good idea.
   find(query, { skip, limit, sort } = {}) {
+    console.log('MongoCollection-->find');
     return this._rawFind(query, { skip, limit, sort })
       .catch(error => {
         // Check for "no geoindex" error
@@ -66,14 +67,18 @@ export default class MongoCollection {
   }
 
   insertOne(object) {
-    return this._mongoCollection.insertOne(object);
+  console.log('MongoCollection-->insertOne');
+
+  return this._mongoCollection.insertOne(object);
   }
 
   // Atomically updates data in the database for a single (first) object that matched the query
   // If there is nothing that matches the query - does insert
   // Postgres Note: `INSERT ... ON CONFLICT UPDATE` that is available since 9.5.
   upsertOne(query, update) {
-    return this._mongoCollection.update(query, update, { upsert: true });
+  console.log('MongoCollection-->updateOne');
+
+  return this._mongoCollection.update(query, update, { upsert: true });
   }
 
   updateOne(query, update) {

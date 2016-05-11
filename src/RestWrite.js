@@ -517,6 +517,7 @@ RestWrite.prototype.handleSession = function() {
 // into an update.
 // Returns a promise for when we're done if it can't finish this tick.
 RestWrite.prototype.handleInstallation = function() {
+  console.log('RestWrite-->handleInstallation');
   if (this.response || this.className !== '_Installation') {
     return;
   }

@@ -95,6 +95,7 @@ class MongoSchemaCollection {
   // this adapter doesn't know about the schema, return a promise that rejects with
   // undefined as the reason.
   findSchema(name: string) {
+    console.log('MongoSchemaCollection-->findSchema');
     return this._collection._rawFind(_mongoSchemaQueryFromNameQuery(name), { limit: 1 }).then(results => {
       if (results.length === 1) {
         return mongoSchemaToParseSchema(results[0]);
@@ -116,12 +117,15 @@ class MongoSchemaCollection {
   }
 
   addSchema(name: string, fields) {
+  console.log('MongoSchemaCollection-->addSchema');
     let mongoObject = _mongoSchemaObjectFromNameFields(name, fields);
     return this._collection.insertOne(mongoObject);
   }
 
   updateSchema(name: string, update) {
-    return this._collection.updateOne(_mongoSchemaQueryFromNameQuery(name), update);
+  console.log('MongoSchemaCollection-->updateSchema');
+
+  return this._collection.updateOne(_mongoSchemaQueryFromNameQuery(name), update);
   }
 
   upsertSchema(name: string, query: string, update) {

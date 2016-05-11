@@ -21,7 +21,6 @@ function find(config, auth, className, restWhere, restOptions) {
   var query = new RestQuery(config, auth, className,
                   restWhere, restOptions);
   console.log('rest-->find');
-  console.log(config);
   return query.execute();
 }
 

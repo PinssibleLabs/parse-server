@@ -372,6 +372,7 @@ RestQuery.prototype.replaceDontSelect = function() {
 // Returns a promise for whether it was successful.
 // Populates this.response with an object that only has 'results'.
 RestQuery.prototype.runFind = function() {
+  console.log('RestQuery-->funFind');
   return this.config.database.find(
     this.className, this.restWhere, this.findOptions).then((results) => {
     if (this.className == '_User') {

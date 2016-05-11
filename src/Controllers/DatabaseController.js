@@ -146,7 +146,7 @@ DatabaseController.prototype.untransformObject = function(
 //         one of the provided strings must provide the caller with
 //         write permissions.
 DatabaseController.prototype.update = function(className, query, update, options) {
-
+  console.log('DatabaseController-->update');
   const originalUpdate = update;
   // Make a copy of the object, so we don't mutate the incoming data.
   update = deepcopy(update);
@@ -330,6 +330,7 @@ DatabaseController.prototype.destroy = function(className, query, options = {}) 
 // Inserts an object into the database.
 // Returns a promise that resolves successfully iff the object saved.
 DatabaseController.prototype.create = function(className, object, options) {
+  console.log('DatabaseController-->create');
   // Make a copy of the object, so we don't mutate the incoming data.
   let originalObject = object;
   object = deepcopy(object);
