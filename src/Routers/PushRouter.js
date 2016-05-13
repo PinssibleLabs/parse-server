@@ -13,14 +13,22 @@ export class PushRouter extends PromiseRouter {
     if (!pushController) {
       throw new Parse.Error(Parse.Error.PUSH_MISCONFIGURED, 'Push controller is not set');
     }
-
     let where = PushRouter.getQueryCondition(req);
-    pushController.sendPushInCursor(req.body, where, req.config, req.auth);
-    return Promise.resolve({
-      response: {
-        'result': true
-      }
+    let resolve;
+    let promise = new Promise((_resolve) => {
+      resolve = _resolve;
     });
+    pushController.sendPushInCursor(req.body, where, req.config, req.auth, (pushStatusId) => {
+      resolve({
+        headers: {
+          'X-Parse-Push-Status-Id': pushStatusId
+        },
+        response: {
+          result: true
+        }
+      });
+    });
+    return promise;
   }
 
   /**

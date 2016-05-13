@@ -1,7 +1,5 @@
 // ParseServer - open-source compatible API Server for Parse apps
 
-import 'babel-polyfill';
-
 var batch = require('./batch'),
     bodyParser = require('body-parser'),
     DatabaseAdapter = require('./DatabaseAdapter'),
@@ -11,6 +9,10 @@ var batch = require('./batch'),
     Parse = require('parse/node').Parse,
     path = require('path'),
     authDataManager = require('./authDataManager');
+
+if (!global._babelPolyfill) {
+  require('babel-polyfill');
+}
 
 import { logger,
       configureLogger }       from './logger';
@@ -53,8 +55,6 @@ addParseCloud();
 
 // ParseServer works like a constructor of an express app.
 // The args that we understand are:
-// "databaseAdapter": a class like DatabaseController providing create, find,
-//                    update, and delete
 // "filesAdapter": a class like GridStoreAdapter providing create, get,
 //                 and delete
 // "loggerAdapter": a class like FileLoggerAdapter providing info, error,
@@ -84,12 +84,11 @@ class ParseServer {
     appId = requiredParameter('You must provide an appId!'),
     masterKey = requiredParameter('You must provide a masterKey!'),
     appName,
-    databaseAdapter,
     filesAdapter,
     push,
     loggerAdapter,
     logsFolder,
-    databaseURI = DatabaseAdapter.defaultDatabaseURI,
+    databaseURI,
     databaseOptions,
     cloud,
     collectionPrefix = '',
@@ -115,6 +114,9 @@ class ParseServer {
     },
     liveQuery = {},
     sessionLength = 31536000, // 1 Year in seconds
+    expireInactiveSessions = true,
+    verbose = false,
+    revokeSessionOnPasswordReset = true,
   }) {
     // Initialize the node client SDK automatically
     Parse.initialize(appId, javascriptKey || 'unused', masterKey);
@@ -126,17 +128,11 @@ class ParseServer {
       })
     }
 
-    if (databaseAdapter) {
-      DatabaseAdapter.setAdapter(databaseAdapter);
-    }
-
     if (databaseOptions) {
       DatabaseAdapter.setAppDatabaseOptions(appId, databaseOptions);
     }
 
-    if (databaseURI) {
-      DatabaseAdapter.setAppDatabaseURI(appId, databaseURI);
-    }
+    DatabaseAdapter.setAppDatabaseURI(appId, databaseURI);
 
     if (cloud) {
       addParseCloud();
@@ -149,6 +145,9 @@ class ParseServer {
       }
     }
 
+    if (verbose || process.env.VERBOSE || process.env.VERBOSE_PARSE_SERVER) {
+      configureLogger({level: 'silly'});
+    }
 
     const filesControllerAdapter = loadAdapter(filesAdapter, () => {
       return new GridStoreAdapter(databaseURI);
@@ -189,7 +188,9 @@ class ParseServer {
       customPages: customPages,
       maxUploadSize: maxUploadSize,
       liveQueryController: liveQueryController,
-      sessionLength : Number(sessionLength),
+      sessionLength: Number(sessionLength),
+      expireInactiveSessions: expireInactiveSessions,
+      revokeSessionOnPasswordReset
     });
 
     // To maintain compatibility. TODO: Remove in some version that breaks backwards compatability

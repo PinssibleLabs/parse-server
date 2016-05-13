@@ -45,6 +45,10 @@ function handleParseHeaders(req, res, next) {
       fileViaJSON = true;
     }
 
+    if (req.body) {
+      delete req.body._RevocableSession;
+    }
+
     if (req.body &&
       req.body._ApplicationId &&
       cache.apps.get(req.body._ApplicationId) &&
@@ -185,7 +189,7 @@ var handleParseErrors = function(err, req, res, next) {
     res.status(err.status);
     res.json({error: err.message});
   } else {
-    log.error('Uncaught internal server error.', err, err.stack);
+    log.error('middlewares->Uncaught internal server error.', err, err.stack);
     res.status(500);
     res.json({code: Parse.Error.INTERNAL_SERVER_ERROR,
               message: 'Internal server error.'});

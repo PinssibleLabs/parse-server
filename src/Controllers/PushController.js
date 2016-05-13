@@ -5,6 +5,8 @@ import AdaptableController from './AdaptableController';
 import { PushAdapter }     from '../Adapters/Push/PushAdapter';
 import deepcopy            from 'deepcopy';
 import RestQuery           from '../RestQuery';
+import RestWrite           from '../RestWrite';
+import { master }          from '../Auth';
 import pushStatusHandler   from '../pushStatusHandler';
 
 const FEATURE_NAME = 'push';
@@ -38,7 +40,7 @@ export class PushController extends AdaptableController {
     return !!this.adapter;
   }
 
-  sendPush(body = {}, where = {}, config, auth, wait) {
+  sendPush(body = {}, where = {}, config, auth, onPushStatusSaved = () => {}) {
     var pushAdapter = this.adapter;
     if (!this.pushIsAvailable) {
       throw new Parse.Error(Parse.Error.PUSH_MISCONFIGURED,
@@ -54,36 +56,32 @@ export class PushController extends AdaptableController {
     }
     if (body.data && body.data.badge) {
       let badge = body.data.badge;
-      let op = {};
+      let restUpdate = {};
       if (typeof badge == 'string' && badge.toLowerCase() === 'increment') {
-        op = { $inc: { badge: 1 } }
+        restUpdate = { badge: { __op: 'Increment', amount: 1 } }
       } else if (Number(badge)) {
-        op = { $set: { badge: badge } }
+        restUpdate = { badge: badge }
       } else {
         throw "Invalid value for badge, expected number or 'Increment'";
       }
       let updateWhere = deepcopy(where);
 
       badgeUpdate = () => {
-        let badgeQuery = new RestQuery(config, auth, '_Installation', updateWhere);
-        return badgeQuery.buildRestWhere().then(() => {
-          let restWhere = deepcopy(badgeQuery.restWhere);
-          // Force iOS only devices
-          if (!restWhere['$and']) {
-            restWhere['$and'] = [badgeQuery.restWhere];
-          }
-          restWhere['$and'].push({
-            'deviceType': 'ios'
-          });
-          return config.database.adaptiveCollection("_Installation")
-            .then(coll => coll.updateMany(restWhere, op));
-        })
+        updateWhere.deviceType = 'ios';
+        // Build a real RestQuery so we can use it in RestWrite
+        let restQuery = new RestQuery(config, master(config), '_Installation', updateWhere);
+        return restQuery.buildRestWhere().then(() => {
+          let write = new RestWrite(config, master(config), '_Installation', restQuery.restWhere, restUpdate);
+          write.runOptions.many = true;
+          return write.execute();
+        });
       }
     }
     let pushStatus = pushStatusHandler(config);
     return Promise.resolve().then(() => {
       return pushStatus.setInitial(body, where);
     }).then(() => {
+      onPushStatusSaved(pushStatus.objectId);
       return badgeUpdate();
     }).then(() => {
       return rest.find(config, auth, '_Installation', where);
@@ -101,7 +99,7 @@ export class PushController extends AdaptableController {
     });
   }
 
-sendPushInCursor(body = {}, where = {}, config, auth, wait) {
+sendPushInCursor(body = {}, where = {}, config, auth, onPushStatusSaved = () => {}) {
   var pushAdapter = this.adapter;
   if (!this.pushIsAvailable) {
     throw new Parse.Error(Parse.Error.PUSH_MISCONFIGURED,
@@ -147,6 +145,7 @@ let pushStatus = pushStatusHandler(config);
 return Promise.resolve().then(() => {
       return pushStatus.setInitial(body, where);
 }).then(() => {
+  onPushStatusSaved(pushStatus.objectId);
   return badgeUpdate();
 }).then(() => {
   return  config.database.findCursor("_Installation", where);
@@ -154,8 +153,7 @@ return Promise.resolve().then(() => {
 {
   var pageSize = 10000;
   var i = 0;
-  //var kue = require('kue')
-  //    , queue = kue.createQueue();
+
 
   var cache = [];
   // Execute the each command, triggers for each document
@@ -164,23 +162,12 @@ return Promise.resolve().then(() => {
     if(item!=null){
       i++;
       cache.push(item);
-    //  console.log("item"+i);
     }
 
     if (i / pageSize > 0 && i % pageSize == 0) {
       var installations = cache;
       cache=[];
-      //var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
-      //{
-      //  if( !err ) console.log( pushJbo.id );
-      //});
-      //queue.process('push', function(job, done){
-      //
-      //  pushStatus.setRunning(job.data.installation);
-      //  PushController.pushNotification(pushAdapter,job.data.databody,job.data.installation,done);
-      //});
 
-    //  pushStatus.setRunning(installations);
       PushController.pushNotification(pushAdapter,pushStatus,body,installations);
 
     }
@@ -195,20 +182,7 @@ return Promise.resolve().then(() => {
         if(installations.length==0)
         {
           console.log("have no more installations");
-        }else
-        {
-          //var pushJbo=queue.create("push",{installation:installations,databody:body}).removeOnComplete(true).save(function(err)
-          //{
-          //  if( !err ) console.log("jobid"+ pushJbo.id );
-          //});
-
         }
-        //queue.process('push', function(job, done){
-        //
-        //  pushStatus.setRunning(job.data.installation);
-        //  PushController.pushNotification(pushAdapter,pushStatus,job.data.databody,job.data.installation,done);
-        //});
-        //pushStatus.setRunning(installations);
         PushController.pushNotification(pushAdapter,pushStatus,body,installations);
 
 
