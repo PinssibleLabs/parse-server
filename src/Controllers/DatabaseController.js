@@ -406,7 +406,7 @@ DatabaseController.prototype.mongoFind = function(className, query, options = {}
 // to avoid Mongo-format dependencies.
 // Returns a promise that resolves to a cursor.
 DatabaseController.prototype.findCursor = function(className, query, options = {}) {
-  return this.adaptiveCollection(className)
+  return this.adapter.adaptiveCollection(className)
           .then(collection => collection.findCursor(query, options));
 };
 
