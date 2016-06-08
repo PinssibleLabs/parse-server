@@ -2,7 +2,7 @@
 // configured.
 // mount is the URL for the root of the API; includes http, domain, etc.
 
-import cache from './cache';
+import AppCache from './cache';
 
 function removeTrailingSlash(str) {
   if (!str) {
@@ -17,7 +17,7 @@ function removeTrailingSlash(str) {
 export class Config {
   constructor(applicationId: string, mount: string) {
     let DatabaseAdapter = require('./DatabaseAdapter');
-    let cacheInfo = cache.apps.get(applicationId);
+    let cacheInfo = AppCache.get(applicationId);
     if (!cacheInfo) {
       return;
     }
@@ -28,6 +28,7 @@ export class Config {
     this.javascriptKey = cacheInfo.javascriptKey;
     this.dotNetKey = cacheInfo.dotNetKey;
     this.restAPIKey = cacheInfo.restAPIKey;
+    this.webhookKey = cacheInfo.webhookKey;
     this.fileKey = cacheInfo.fileKey;
     this.facebookAppIds = cacheInfo.facebookAppIds;
     this.allowClientClassCreation = cacheInfo.allowClientClassCreation;
@@ -38,6 +39,7 @@ export class Config {
     this.verifyUserEmails = cacheInfo.verifyUserEmails;
     this.appName = cacheInfo.appName;
 
+    this.cacheController = cacheInfo.cacheController;
     this.hooksController = cacheInfo.hooksController;
     this.filesController = cacheInfo.filesController;
     this.pushController = cacheInfo.pushController;

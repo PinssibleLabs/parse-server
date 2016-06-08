@@ -28,7 +28,7 @@ export class FeaturesRouter extends PromiseRouter {
         push: {
           immediatePush: req.config.pushController.pushIsAvailable,
           scheduledPush: false,
-          storedPushData: false,
+          storedPushData: req.config.pushController.pushIsAvailable,
           pushAudiences: false,
         },
         schemas: {
@@ -39,6 +39,7 @@ export class FeaturesRouter extends PromiseRouter {
           clearAllDataFromClass: false,
           exportClass: false,
           editClassLevelPermissions: true,
+          editPointerPermissions: true,
         },
       };
 
