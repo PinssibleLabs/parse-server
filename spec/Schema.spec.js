@@ -132,6 +132,7 @@ describe('SchemaController', () => {
         var get = {};
         get[user.id] = true;
         return schema.setPermissions('Stuff', {
+          'create': {'*': true},
           'find': find,
           'get': get
         });
@@ -152,6 +153,7 @@ describe('SchemaController', () => {
           done();
         }, (e) => {
           fail('Class permissions should have allowed this get query');
+          done();
         });
       });
     });
@@ -453,6 +455,10 @@ describe('SchemaController', () => {
           timeZone: { type: 'String' },
           localeIdentifier: { type: 'String' },
           badge: { type: 'Number' },
+          appVersion: { type: 'String' },
+          appName: { type: 'String' },
+          appIdentifier: { type: 'String' },
+          parseVersion: { type: 'String' },
         },
         classLevelPermissions: {
           find: { '*': true },

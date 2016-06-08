@@ -15,8 +15,8 @@ if (!global._babelPolyfill) {
 }
 
 import { logger,
-      configureLogger }       from './logger';
-import cache                    from './cache';
+      configureLogger }         from './logger';
+import AppCache                 from './cache';
 import Config                   from './Config';
 import parseServerPackage       from '../package.json';
 import PromiseRouter            from './PromiseRouter';
@@ -24,6 +24,8 @@ import requiredParameter        from './requiredParameter';
 import { AnalyticsRouter }      from './Routers/AnalyticsRouter';
 import { ClassesRouter }        from './Routers/ClassesRouter';
 import { FeaturesRouter }       from './Routers/FeaturesRouter';
+import { InMemoryCacheAdapter } from './Adapters/Cache/InMemoryCacheAdapter';
+import { CacheController }      from './Controllers/CacheController';
 import { FileLoggerAdapter }    from './Adapters/Logger/FileLoggerAdapter';
 import { FilesController }      from './Controllers/FilesController';
 import { FilesRouter }          from './Routers/FilesRouter';
@@ -74,6 +76,7 @@ addParseCloud();
 // "clientKey": optional key from Parse dashboard
 // "dotNetKey": optional key from Parse dashboard
 // "restAPIKey": optional key from Parse dashboard
+// "webhookKey": optional key from Parse dashboard
 // "javascriptKey": optional key from Parse dashboard
 // "push": optional key from configure push
 // "sessionLength": optional length in seconds for how long Sessions should be valid for
@@ -96,6 +99,7 @@ class ParseServer {
     javascriptKey,
     dotNetKey,
     restAPIKey,
+    webhookKey,
     fileKey = 'invalid-file-key',
     facebookAppIds = [],
     enableAnonymousUsers = true,
@@ -104,6 +108,7 @@ class ParseServer {
     serverURL = requiredParameter('You must provide a serverURL!'),
     maxUploadSize = '20mb',
     verifyUserEmails = false,
+    cacheAdapter,
     emailAdapter,
     publicServerURL,
     customPages = {
@@ -156,16 +161,19 @@ class ParseServer {
     const pushControllerAdapter = loadAdapter(push && push.adapter, ParsePushAdapter, push);
     const loggerControllerAdapter = loadAdapter(loggerAdapter, FileLoggerAdapter);
     const emailControllerAdapter = loadAdapter(emailAdapter);
+    const cacheControllerAdapter = loadAdapter(cacheAdapter, InMemoryCacheAdapter, {appId: appId});
+
     // We pass the options and the base class for the adatper,
     // Note that passing an instance would work too
     const filesController = new FilesController(filesControllerAdapter, appId);
     const pushController = new PushController(pushControllerAdapter, appId);
     const loggerController = new LoggerController(loggerControllerAdapter, appId);
-    const hooksController = new HooksController(appId, collectionPrefix);
+    const hooksController = new HooksController(appId, collectionPrefix, webhookKey);
     const userController = new UserController(emailControllerAdapter, appId, { verifyUserEmails });
     const liveQueryController = new LiveQueryController(liveQuery);
+    const cacheController = new CacheController(cacheControllerAdapter, appId);
 
-    cache.apps.set(appId, {
+    AppCache.put(appId, {
       masterKey: masterKey,
       serverURL: serverURL,
       collectionPrefix: collectionPrefix,
@@ -173,8 +181,10 @@ class ParseServer {
       javascriptKey: javascriptKey,
       dotNetKey: dotNetKey,
       restAPIKey: restAPIKey,
+      webhookKey: webhookKey,
       fileKey: fileKey,
       facebookAppIds: facebookAppIds,
+      cacheController: cacheController,
       filesController: filesController,
       pushController: pushController,
       loggerController: loggerController,
@@ -195,11 +205,11 @@ class ParseServer {
 
     // To maintain compatibility. TODO: Remove in some version that breaks backwards compatability
     if (process.env.FACEBOOK_APP_ID) {
-      cache.apps.get(appId)['facebookAppIds'].push(process.env.FACEBOOK_APP_ID);
+      AppCache.get(appId)['facebookAppIds'].push(process.env.FACEBOOK_APP_ID);
     }
 
-    Config.validate(cache.apps.get(appId));
-    this.config = cache.apps.get(appId);
+    Config.validate(AppCache.get(appId));
+    this.config = AppCache.get(appId);
     hooksController.load();
   }
 

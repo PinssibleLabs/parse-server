@@ -17,7 +17,7 @@ app.listen(12345);
 
 describe('Hooks', () => {
 
-   it("should have some hooks registered", (done) => {
+   it("should have no hooks registered", (done) => {
      Parse.Hooks.getFunctions().then((res) => {
        expect(res.constructor).toBe(Array.prototype.constructor);
        done();
@@ -27,7 +27,7 @@ describe('Hooks', () => {
      });
    });
 
-   it("should have some triggers registered", (done) => {
+   it("should have no triggers registered", (done) => {
      Parse.Hooks.getTriggers().then( (res) => {
        expect(res.constructor).toBe(Array.prototype.constructor);
        done();
@@ -46,10 +46,12 @@ describe('Hooks', () => {
       // Find
       return Parse.Hooks.getFunction("My-Test-Function")
     }).then(response => {
+      expect(response.objectId).toBeUndefined();
       expect(response.url).toBe("http://someurl");
       return Parse.Hooks.updateFunction("My-Test-Function", "http://anotherurl");
     })
     .then((res) => {
+      expect(res.objectId).toBeUndefined();
       expect(res.functionName).toBe("My-Test-Function");
       expect(res.url).toBe("http://anotherurl")
       // delete
@@ -90,6 +92,7 @@ describe('Hooks', () => {
      }).then((res) => {
        expect(res).not.toBe(null);
        expect(res).not.toBe(undefined);
+       expect(res.objectId).toBeUndefined();
        expect(res.url).toBe("http://someurl");
        // delete
         return Parse.Hooks.updateTrigger("MyClass","beforeDelete", "http://anotherurl");
@@ -99,6 +102,7 @@ describe('Hooks', () => {
      }).then((res) => {
        expect(res.className).toBe("MyClass");
        expect(res.url).toBe("http://anotherurl")
+       expect(res.objectId).toBeUndefined();
 
        return Parse.Hooks.deleteTrigger("MyClass","beforeDelete");
      }, (err) => {
@@ -291,7 +295,7 @@ describe('Hooks', () => {
        console.error(err);
        fail("Should not fail calling a function");
        done();
-     })
+     });
    });
 
    it("should run the function on the test server", (done) => {
@@ -299,7 +303,7 @@ describe('Hooks', () => {
      app.post("/SomeFunctionError", function(req, res) {
         res.json({error: {code: 1337, error: "hacking that one!"}});
      });
-     // The function is delete as the DB is dropped between calls
+     // The function is deleted as the DB is dropped between calls
      Parse.Hooks.createFunction("SOME_TEST_FUNCTION", hookServerURL+"/SomeFunctionError").then(function(){
        return Parse.Cloud.run("SOME_TEST_FUNCTION")
      }, (err) => {
@@ -317,6 +321,57 @@ describe('Hooks', () => {
      });
    });
 
+   it("should provide X-Parse-Webhook-Key when defined", (done) => {
+     app.post("/ExpectingKey", function(req, res) {
+       if (req.get('X-Parse-Webhook-Key') === 'hook') {
+         res.json({success: "correct key provided"});
+       } else {
+         res.json({error: "incorrect key provided"});
+       }
+     });
+
+     Parse.Hooks.createFunction("SOME_TEST_FUNCTION", hookServerURL+"/ExpectingKey").then(function(){
+       return Parse.Cloud.run("SOME_TEST_FUNCTION")
+     }, (err) => {
+       console.error(err);
+       fail("Should not fail creating a function");
+       done();
+     }).then(function(res){
+       expect(res).toBe("correct key provided");
+       done();
+     }, (err) => {
+       console.error(err);
+       fail("Should not fail calling a function");
+       done();
+     });
+   });
+
+   it("should not pass X-Parse-Webhook-Key if not provided", (done) => {
+     setServerConfiguration(Object.assign({}, defaultConfiguration, { webhookKey: undefined }));
+     app.post("/ExpectingKeyAlso", function(req, res) {
+       if (req.get('X-Parse-Webhook-Key') === 'hook') {
+         res.json({success: "correct key provided"});
+       } else {
+         res.json({error: "incorrect key provided"});
+       }
+     });
+
+     Parse.Hooks.createFunction("SOME_TEST_FUNCTION", hookServerURL+"/ExpectingKeyAlso").then(function(){
+       return Parse.Cloud.run("SOME_TEST_FUNCTION")
+     }, (err) => {
+       console.error(err);
+       fail("Should not fail creating a function");
+       done();
+     }).then(function(res){
+       fail("Should not succeed calling that function");
+       done();
+     }, (err) => {
+       expect(err.code).toBe(141);
+       expect(err.message).toEqual("incorrect key provided");
+       done();
+     });
+   });
+
 
    it("should run the beforeSave hook on the test server", (done) => {
      var triggerCount = 0;
@@ -326,21 +381,41 @@ describe('Hooks', () => {
        object.hello = "world";
        // Would need parse cloud express to set much more
        // But this should override the key upon return
-        res.json({success: {object: object}});
+       res.json({success: object});
      });
      // The function is delete as the DB is dropped between calls
      Parse.Hooks.createTrigger("SomeRandomObject", "beforeSave" ,hookServerURL+"/BeforeSaveSome").then(function(){
        const obj = new Parse.Object("SomeRandomObject");
        return obj.save();
-     }).then(function(res){
+     }).then(function(res) {
        expect(triggerCount).toBe(1);
        return res.fetch();
-     }).then(function(res){
+     }).then(function(res) {
        expect(res.get("hello")).toEqual("world");
        done();
      }).fail((err) => {
        console.error(err);
        fail("Should not fail creating a function");
+       done();
+     });
+   });
+
+   it("beforeSave hooks should correctly handle responses containing entire object", (done) => {
+     app.post("/BeforeSaveSome2", function(req, res) {
+       var object = Parse.Object.fromJSON(req.body.object);
+       object.set('hello', "world");
+       res.json({success: object});
+     });
+     Parse.Hooks.createTrigger("SomeRandomObject2", "beforeSave" ,hookServerURL+"/BeforeSaveSome2").then(function(){
+       const obj = new Parse.Object("SomeRandomObject2");
+       return obj.save();
+     }).then(function(res) {
+       return res.save();
+     }).then(function(res) {
+       expect(res.get("hello")).toEqual("world");
+       done();
+     }).fail((err) => {
+       fail(`Should not fail: ${JSON.stringify(err)}`);
        done();
      });
    });
