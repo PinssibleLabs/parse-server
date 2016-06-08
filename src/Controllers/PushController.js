@@ -153,8 +153,6 @@ return Promise.resolve().then(() => {
 {
   var pageSize = 10000;
   var i = 0;
-
-
   var cache = [];
   // Execute the each command, triggers for each document
   cursor.each(function (err, item) {
@@ -167,7 +165,7 @@ return Promise.resolve().then(() => {
     if (i / pageSize > 0 && i % pageSize == 0) {
       var installations = cache;
       cache=[];
-
+      console.log("pushController====>sendPushInCursor:installationsCount",installations.length);
       PushController.pushNotification(pushAdapter,pushStatus,body,installations);
 
     }
@@ -183,9 +181,8 @@ return Promise.resolve().then(() => {
         {
           console.log("have no more installations");
         }
+
         PushController.pushNotification(pushAdapter,pushStatus,body,installations);
-
-
       }
     }
 

@@ -602,6 +602,13 @@ DatabaseController.prototype.addNotInObjectIdsIds = function(ids = null, query) 
   return query;
 }
 
+
+DatabaseController.prototype.findCursor = function(className, query, options = {}) {
+  return this.adapter.adaptiveCollection(className)
+      .then(collection => collection.findCursor(query, options));
+};
+
+
 // Runs a query on the database.
 // Returns a promise that resolves to a list of items.
 // Options:
