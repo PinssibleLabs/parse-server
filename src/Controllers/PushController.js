@@ -185,7 +185,7 @@ return Promise.resolve().then(() => {
         {
           console.log("have no more installations");
         }
-
+        console.log("pushController====>sendPushInCursor:installationsCount",installations.length);
         PushController.pushNotification(pushAdapter,pushStatus,body,installations);
       }
     }

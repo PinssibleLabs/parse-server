@@ -688,7 +688,7 @@ DatabaseController.prototype.addNotInObjectIdsIds = function(ids = null, query) 
 
 
 DatabaseController.prototype.findCursor = function(className, query, options = {}) {
-  return this.adapter.adaptiveCollection(className)
+  return this.adapter._adaptiveCollection(className)
       .then(collection => collection.findCursor(query, options));
 };
 
