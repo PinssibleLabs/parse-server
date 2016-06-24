@@ -69,8 +69,8 @@ function del(config, auth, className, objectId) {
   }).then(() => {
     if (!auth.isMaster) {
       return auth.getUserRoles();
-    }else{
-      return Promise.resolve();
+    } else {
+      return;
     }
   }).then(() => {
     var options = {};
@@ -87,7 +87,7 @@ function del(config, auth, className, objectId) {
     }, options);
   }).then(() => {
     triggers.maybeRunTrigger(triggers.Types.afterDelete, auth, inflatedObject, null, config);
-    return Promise.resolve();
+    return;
   });
 }
 
@@ -117,8 +117,7 @@ function update(config, auth, className, objectId, restObject) {
       originalRestObject = response.results[0];
     }
 
-    var write = new RestWrite(config, auth, className,
-                              {objectId: objectId}, restObject, originalRestObject);
+    var write = new RestWrite(config, auth, className, {objectId: objectId}, restObject, originalRestObject);
     return write.execute();
   });
 }

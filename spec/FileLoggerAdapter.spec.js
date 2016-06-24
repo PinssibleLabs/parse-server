@@ -5,7 +5,6 @@ var Parse = require('parse/node').Parse;
 var request = require('request');
 
 describe('info logs', () => {
-
   it("Verify INFO logs", (done) => {
     var fileLoggerAdapter = new FileLoggerAdapter();
     fileLoggerAdapter.info('testing info logs', () => {
@@ -27,7 +26,6 @@ describe('info logs', () => {
 });
 
 describe('error logs', () => {
-
   it("Verify ERROR logs", (done) => {
     var fileLoggerAdapter = new FileLoggerAdapter();
     fileLoggerAdapter.error('testing error logs', () => {
@@ -50,11 +48,10 @@ describe('error logs', () => {
 });
 
 describe('verbose logs', () => {
-
   it("mask sensitive information in _User class", (done) => {
-    let customConfig = Object.assign({}, defaultConfiguration, {verbose: true});
-    setServerConfiguration(customConfig);
-    createTestUser().then(() => {
+    reconfigureServer({ verbose: true })
+    .then(() => createTestUser())
+    .then(() => {
       let fileLoggerAdapter = new FileLoggerAdapter();
       return fileLoggerAdapter.query({
         from: new Date(Date.now() - 500),
@@ -62,7 +59,7 @@ describe('verbose logs', () => {
         level: 'verbose'
       });
     }).then((results) => {
-      expect(results[1].body.password).toEqual("********");
+      expect(results[1].message.includes('"password": "********"')).toEqual(true);
       var headers = {
         'X-Parse-Application-Id': 'test',
         'X-Parse-REST-API-Key': 'rest'
@@ -77,7 +74,7 @@ describe('verbose logs', () => {
           size: 100,
           level: 'verbose'
         }).then((results) => {
-          expect(results[1].url.includes('password=********')).toEqual(true);
+          expect(results[1].message.includes('password=********')).toEqual(true);
           done();
         });
       });
@@ -95,7 +92,7 @@ describe('verbose logs', () => {
         level: 'verbose'
       });
     }).then((results) => {
-      expect(results[1].body.password).toEqual("pw");
+      expect(results[1].message.includes('"password": "pw"')).toEqual(true);
       done();
     });
   });
