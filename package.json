@@ -27,6 +27,7 @@
     "deepcopy": "0.6.3",
     "express": "4.14.0",
     "intersect": "1.0.1",
+    "kerberos": "0.0.21",
     "lodash": "4.12.0",
     "lru-cache": "4.0.1",
     "mailgun-js": "0.7.10",
