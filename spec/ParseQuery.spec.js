@@ -2312,18 +2312,28 @@ describe('Parse.Query testing', () => {
     });
   });
 
-  it('include on the wrong key type', (done) => {
-    var obj = new Parse.Object('TestObject');
-    obj.set('foo', 'bar');
-    obj.save().then(() => {
-      var query = new Parse.Query('TestObject');
-      query.include('foo');
-      return query.find();
-    }).then((results) => {
-      console.log('results:', results);
-      fail('Should have failed to query.');
+  it_exclude_dbs(['postgres'])('supports include on the wrong key type (#2262)', function(done) {
+    let childObject = new Parse.Object('TestChildObject');
+    childObject.set('hello', 'world');
+    childObject.save().then(() => {
+      let obj = new Parse.Object('TestObject');
+      obj.set('foo', 'bar');
+      obj.set('child', childObject);
+      return obj.save();
+    }).then(() => {
+      let q = new Parse.Query('TestObject');
+      q.include('child');
+      q.include('child.parent');
+      q.include('createdAt');
+      q.include('createdAt.createdAt');
+      return q.find();
+    }).then((objs) => {
+      expect(objs.length).toBe(1);
+      expect(objs[0].get('child').get('hello')).toEqual('world');
+      expect(objs[0].createdAt instanceof Date).toBe(true);
       done();
-    }, (error) => {
+    }, (err) => {
+      fail('should not fail');
       done();
     });
   });
@@ -2527,6 +2537,32 @@ describe('Parse.Query testing', () => {
           }
         });
       }
+    })
+  });
+
+  it_exclude_dbs(['postgres'])('properly handles nested ors', function(done) {
+    var objects = [];
+    while(objects.length != 4) {
+      var obj = new Parse.Object('Object');
+      obj.set('x', objects.length);
+      objects.push(obj)
+    }
+    Parse.Object.saveAll(objects).then(() => {
+      let q0 = new Parse.Query('Object');
+      q0.equalTo('x', 0);
+      let q1 = new Parse.Query('Object');
+      q1.equalTo('x', 1);
+      let q2 = new Parse.Query('Object');
+      q2.equalTo('x', 2);
+      let or01 = Parse.Query.or(q0,q1);
+      return Parse.Query.or(or01, q2).find();
+    }).then((results) => {
+      expect(results.length).toBe(3);
+      done();
+    }).catch((error) => {
+      fail('should not fail');
+      console.error(error);
+      done();
     })
   });
 });

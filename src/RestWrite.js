@@ -23,13 +23,13 @@ import _         from 'lodash';
 // RestWrite will handle objectId, createdAt, and updatedAt for
 // everything. It also knows to use triggers and special modifications
 // for the _User class.
-function RestWrite(config, auth, className, query, data, originalData) {
+function RestWrite(config, auth, className, query, data, originalData, clientSDK) {
   this.config = config;
   this.auth = auth;
   this.className = className;
+  this.clientSDK = clientSDK;
   this.storage = {};
   this.runOptions = {};
-
   if (!query && data.objectId) {
     throw new Parse.Error(Parse.Error.INVALID_KEY_NAME, 'objectId is an invalid field name.');
   }
@@ -290,14 +290,41 @@ RestWrite.prototype.handleAuthData = function(authData) {
     if (results.length > 0) {
       if (!this.query) {
         // Login with auth data
-        // Short circuit
         delete results[0].password;
+        let userResult = results[0];
+        
         // need to set the objectId first otherwise location has trailing undefined
-        this.data.objectId = results[0].objectId;
+        this.data.objectId = userResult.objectId;
+        
+        // Determine if authData was updated
+        let mutatedAuthData = {};
+        Object.keys(authData).forEach((provider) => {
+          let providerData = authData[provider];
+          let userAuthData = userResult.authData[provider];
+          if (!_.isEqual(providerData, userAuthData)) {
+            mutatedAuthData[provider] = providerData;
+          }
+        });
+        
         this.response = {
-          response: results[0],
+          response: userResult,
           location: this.location()
         };
+
+        // We have authData that is updated on login
+        // that can happen when token are refreshed,
+        // We should update the token and let the user in
+        if (Object.keys(mutatedAuthData).length > 0) {
+          // Assign the new authData in the response
+          Object.keys(mutatedAuthData).forEach((provider) => {
+            this.response.response.authData[provider] = mutatedAuthData[provider];
+          });
+          // Run the DB update directly, as 'master'
+          // Just update the authData part
+          return this.config.database.update(this.className, {objectId: this.data.objectId}, {authData: mutatedAuthData}, {});
+        }
+        return;
+        
       } else if (this.query && this.query.objectId) {
         // Trying to update auth data but users
         // are different
@@ -340,6 +367,7 @@ RestWrite.prototype.transformUser = function() {
     }
     if (this.query && !this.auth.isMaster ) {
       this.storage['clearSessions'] = true;
+      this.storage['generateNewSession'] = true;
     }
     return passwordCrypto.hash(this.data.password).then((hashedPassword) => {
       this.data._hashed_password = hashedPassword;
@@ -351,6 +379,7 @@ RestWrite.prototype.transformUser = function() {
     if (!this.data.username) {
       if (!this.query) {
         this.data.username = cryptoUtils.randomString(25);
+        this.responseShouldHaveUsername = true;
       }
       return;
     }
@@ -400,6 +429,10 @@ RestWrite.prototype.createSessionTokenIfNeeded = function() {
   if (this.query) {
     return;
   }
+  return this.createSessionToken();
+}
+
+RestWrite.prototype.createSessionToken = function() {
   var token = 'r:' + cryptoUtils.newToken();
 
   var expiresAt = this.config.generateSessionExpiresAt();
@@ -436,7 +469,13 @@ RestWrite.prototype.handleFollowup = function() {
         }
     };
     delete this.storage['clearSessions'];
-    this.config.database.destroy('_Session', sessionQuery)
+    return this.config.database.destroy('_Session', sessionQuery)
+    .then(this.handleFollowup.bind(this));
+  }
+  
+  if (this.storage && this.storage['generateNewSession']) {
+    delete this.storage['generateNewSession'];
+    return this.createSessionToken()
     .then(this.handleFollowup.bind(this));
   }
 
@@ -444,7 +483,7 @@ RestWrite.prototype.handleFollowup = function() {
     delete this.storage['sendVerificationEmail'];
     // Fire and forget!
     this.config.userController.sendVerificationEmail(this.data);
-    this.handleFollowup.bind(this);
+    return this.handleFollowup.bind(this);
   }
 };
 
@@ -791,6 +830,10 @@ RestWrite.prototype.runDatabaseOperation = function() {
     .then(response => {
       response.objectId = this.data.objectId;
       response.createdAt = this.data.createdAt;
+      
+      if (this.responseShouldHaveUsername) {
+        response.username = this.data.username;
+      }
       if (this.storage.changedByTrigger) {
         Object.keys(this.data).forEach(fieldName => {
           response[fieldName] = response[fieldName] || this.data[fieldName];

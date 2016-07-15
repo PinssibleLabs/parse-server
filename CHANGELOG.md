@@ -1,5 +1,32 @@
 ## Parse Server Changelog
 
+### 2.2.16 (7/10/2016)
+
+* New: Expose InMemoryCacheAdapter publicly, thanks to [Steven Shipton](https://github.com/steven-supersolid)
+* New: Add ability to prevent login with unverified email, thanks to [Diwakar Cherukumilli](https://github.com/cherukumilli)
+* Improved: Better error message for incorrect type, thanks to [Andrew Lane](https://github.com/AndrewLane)
+* Improved: Better error message for permission denied, thanks to [Blayne Chard](https://github.com/blacha)
+* Improved: Update authData on login, thanks to [Florent Vilmart](https://github.com/flovilmart)
+* Improved: Ability to not check for old files on Parse.com, thanks to [OzgeAkin](https://github.com/OzgeAkin)
+* Fix: Issues with email adapter validation, thanks to [Tyler Brock](https://github.com/TylerBrock)
+* Fix: Issues with nested $or queries, thanks to [Florent Vilmart](https://github.com/flovilmart)
+
+### 2.2.15 (6/30/2016)
+
+* Fix: Type in description for Parse.Error.INVALID_QUERY, thanks to [Andrew Lane](https://github.com/AndrewLane)
+* Improvement: Stop requiring verifyUserEmails for password reset functionality, thanks to [Tyler Brock](https://github.com/TylerBrock)
+* Improvement: Kill without validation, thanks to [Drew Gross](https://github.com/drew-gross)
+* Fix: Deleting a file does not delete from fs.files, thanks to [David Keita](https://github.com/maninga)
+* Fix: Postgres stoage adapter fix, thanks to [Vitaly Tomilov](https://github.com/vitaly-t)
+* Fix: Results invalid session when providing an invalid session token, thanks to [Florent Vilmart](https://github.com/flovilmart)
+* Fix: issue creating an anonymous user, thanks to [Hussam Moqhim](https://github.com/hmoqhim)
+* Fix: make http response serializable, thanks to [Florent Vilmart](https://github.com/flovilmart)
+* New: Add postmark email adapter alternative [Glenn Reyes](https://github.com/glennreyes)
+
+### 2.2.14 (6/25/2016)
+
+* Hotfix: Fix Parse.Cloud.HTTPResponse serialization
+
 ### 2.2.13 (6/12/2016)
 
 * Hotfix: Pin version of deepcopy
@@ -353,5 +380,3 @@
 * Fix: Various files related bugs
 * Fix: Force minimum node version 4.3 due to security issues in earlier version
 * Performance Improvement: Improved caching
-
-

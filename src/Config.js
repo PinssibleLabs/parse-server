@@ -36,6 +36,7 @@ export class Config {
     this.serverURL = cacheInfo.serverURL;
     this.publicServerURL = removeTrailingSlash(cacheInfo.publicServerURL);
     this.verifyUserEmails = cacheInfo.verifyUserEmails;
+    this.preventLoginWithUnverifiedEmail = cacheInfo.preventLoginWithUnverifiedEmail;
     this.appName = cacheInfo.appName;
 
     this.cacheController = cacheInfo.cacheController;
@@ -56,17 +57,17 @@ export class Config {
 
   static validate({
     verifyUserEmails,
+    userController,
     appName,
     publicServerURL,
     revokeSessionOnPasswordReset,
     expireInactiveSessions,
     sessionLength,
   }) {
-    this.validateEmailConfiguration({
-      verifyUserEmails: verifyUserEmails,
-      appName: appName,
-      publicServerURL: publicServerURL
-    })
+    const emailAdapter = userController.adapter;
+    if (verifyUserEmails) {
+      this.validateEmailConfiguration({emailAdapter, appName, publicServerURL});
+    }
 
     if (typeof revokeSessionOnPasswordReset !== 'boolean') {
       throw 'revokeSessionOnPasswordReset must be a boolean value';
@@ -81,14 +82,15 @@ export class Config {
     this.validateSessionConfiguration(sessionLength, expireInactiveSessions);
   }
 
-  static validateEmailConfiguration({verifyUserEmails, appName, publicServerURL}) {
-    if (verifyUserEmails) {
-      if (typeof appName !== 'string') {
-        throw 'An app name is required when using email verification.';
-      }
-      if (typeof publicServerURL !== 'string') {
-        throw 'A public server url is required when using email verification.';
-      }
+  static validateEmailConfiguration({emailAdapter, appName, publicServerURL}) {
+    if (!emailAdapter) {
+      throw 'An emailAdapter is required for e-mail verification and password resets.';
+    }
+    if (typeof appName !== 'string') {
+      throw 'An app name is required for e-mail verification and password resets.';
+    }
+    if (typeof publicServerURL !== 'string') {
+      throw 'A public server url is required for e-mail verification and password resets.';
     }
   }
 

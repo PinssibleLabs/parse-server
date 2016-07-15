@@ -518,7 +518,7 @@ class SchemaController {
         if (!dbTypeMatchesObjectType(expectedType, type)) {
           throw new Parse.Error(
             Parse.Error.INCORRECT_TYPE,
-            `schema mismatch for ${className}.${fieldName}; expected ${expectedType.type || expectedType} but got ${type}`
+            `schema mismatch for ${className}.${fieldName}; expected ${expectedType.type || expectedType} but got ${type.type}`
           );
         }
       }
@@ -683,7 +683,7 @@ class SchemaController {
     // Reject create when write lockdown
     if (permissionField == 'writeUserFields' && operation == 'create') {
       throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN,
-        'Permission denied for this action.');
+        `Permission denied for action ${operation} on class ${className}.`);
     }
 
     // Process the readUserFields later
@@ -691,7 +691,7 @@ class SchemaController {
         return Promise.resolve();
     }
     throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN,
-        'Permission denied for this action.');
+        `Permission denied for action ${operation} on class ${className}.`);
   };
 
   // Returns the expected type for a className+key combination

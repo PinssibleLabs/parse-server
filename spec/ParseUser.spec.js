@@ -907,13 +907,11 @@ describe('Parse.User testing', () => {
     }));
   });
 
-  // Note that this mocks out client-side Facebook action rather than
-  // server-side.
-  var getMockFacebookProvider = function() {
+  var getMockFacebookProviderWithIdToken = function(id, token) {
     return {
       authData: {
-        id: "8675309",
-        access_token: "jenny",
+        id: id,
+        access_token: token,
         expiration_date: new Date().toJSON(),
       },
       shouldError: false,
@@ -951,6 +949,12 @@ describe('Parse.User testing', () => {
         this.restoreAuthentication(null);
       }
     };
+  }
+
+  // Note that this mocks out client-side Facebook action rather than
+  // server-side.
+  var getMockFacebookProvider = function() {
+    return getMockFacebookProviderWithIdToken('8675309', 'jenny');
   };
 
   var getMockMyOauthProvider = function() {
@@ -1022,6 +1026,40 @@ describe('Parse.User testing', () => {
         ok(false, "linking should have worked");
         done();
       }
+    });
+  });
+
+  it_exclude_dbs(['postgres'])("log in with provider and update token", (done) => {
+    var provider = getMockFacebookProvider();
+    var secondProvider = getMockFacebookProviderWithIdToken('8675309', 'jenny_valid_token');
+    var errorHandler = function(err) {
+      fail('should not fail');
+      done();
+    }
+    Parse.User._registerAuthenticationProvider(provider);
+    Parse.User._logInWith("facebook", {
+      success: (model) => {
+        Parse.User._registerAuthenticationProvider(secondProvider);
+        return Parse.User.logOut().then(() => {
+          Parse.User._logInWith("facebook", {
+            success: (model) => {
+              expect(secondProvider.synchronizedAuthToken).toEqual('jenny_valid_token');
+              // Make sure we can login with the new token again
+              Parse.User.logOut().then(() => {
+                Parse.User._logInWith("facebook", {
+                  success: done,
+                  error: errorHandler
+                });
+              });
+            },
+            error: errorHandler
+          });
+        })
+      },
+      error: errorHandler
+    }).catch((err) => {
+      errorHandler(err);
+      done();
     });
   });
 
@@ -1428,6 +1466,47 @@ describe('Parse.User testing', () => {
     });
   });
 
+  it_exclude_dbs(['postgres'])("link multiple providers and updates token", (done) => {
+    var provider = getMockFacebookProvider();
+    var secondProvider = getMockFacebookProviderWithIdToken('8675309', 'jenny_valid_token');
+
+    var errorHandler = function(model, error) {
+      console.error(error);
+      fail('Should not fail');
+      done();
+    }
+    var mockProvider = getMockMyOauthProvider();
+    Parse.User._registerAuthenticationProvider(provider);
+    Parse.User._logInWith("facebook", {
+      success: function(model) {
+        Parse.User._registerAuthenticationProvider(mockProvider);
+        let objectId = model.id;
+        model._linkWith("myoauth", {
+          success: function(model) {
+            Parse.User._registerAuthenticationProvider(secondProvider);
+            Parse.User.logOut().then(() => {
+              return Parse.User._logInWith("facebook", {
+                success: () => {
+                  Parse.User.logOut().then(() => {
+                    return Parse.User._logInWith("myoauth", {
+                      success: (user) => {
+                        expect(user.id).toBe(objectId);
+                        done();
+                      }
+                    })
+                  })
+                },
+                error: errorHandler
+              });
+            })
+          },
+          error: errorHandler
+        })
+      },
+      error: errorHandler
+    });
+  });
+
   it_exclude_dbs(['postgres'])("link multiple providers and update token", (done) => {
     var provider = getMockFacebookProvider();
     var mockProvider = getMockMyOauthProvider();
@@ -1589,7 +1668,7 @@ describe('Parse.User testing', () => {
       bob.setPassword('meower');
       return bob.save();
     }).then(() => {
-      return Parse.User.logIn('bob', 'meower');
+      return Parse.User.logIn('bob', 'meower');  
     }).then((bob) => {
       expect(bob.getUsername()).toEqual('bob');
       done();
@@ -2091,7 +2170,7 @@ describe('Parse.User testing', () => {
       fail('Save should have failed.');
       done();
     }, (e) => {
-      expect(e.code).toEqual(Parse.Error.SESSION_MISSING);
+      expect(e.code).toEqual(Parse.Error.INVALID_SESSION_TOKEN);
       done();
     });
   });
@@ -2118,6 +2197,26 @@ describe('Parse.User testing', () => {
           },
         }, (error, response, body) => {
           expect(body.results[0].expiresAt.__type).toEqual('Date');
+          done();
+        })
+      }
+    });
+  });
+
+  it("invalid session tokens are rejected", (done) => {
+    Parse.User.signUp("asdf", "zxcv", null, {
+      success: function(user) {
+        request.get({
+          url: 'http://localhost:8378/1/classes/AClass',
+          json: true,
+          headers: {
+            'X-Parse-Application-Id': 'test',
+            'X-Parse-Rest-API-Key': 'rest',
+            'X-Parse-Session-Token': 'text'
+          },
+        }, (error, response, body) => {
+          expect(body.code).toBe(209);
+          expect(body.error).toBe('invalid session token');
           done();
         })
       }
@@ -2158,12 +2257,14 @@ describe('Parse.User testing', () => {
     })
   });
 
-  it('should cleanup null authData keys ParseUser update (regression test for #1198)', (done) => {
+  it_exclude_dbs(['postgres'])('should cleanup null authData keys ParseUser update (regression test for #1198, #2252)', (done) => {
     Parse.Cloud.beforeSave('_User', (req, res) => {
       req.object.set('foo', 'bar');
       res.success();
     });
-
+    
+    let originalSessionToken;
+    let originalUserId;
     // Simulate anonymous user save
     new Promise((resolve, reject) => {
       request.post({
@@ -2181,6 +2282,8 @@ describe('Parse.User testing', () => {
         }
       });
     }).then((user) => {
+      originalSessionToken = user.sessionToken;
+      originalUserId = user.objectId;
       // Simulate registration
       return new Promise((resolve, reject) => {
         request.put({
@@ -2192,7 +2295,7 @@ describe('Parse.User testing', () => {
           },
           json: {
             authData: {anonymous: null},
-            user: 'user',
+            username: 'user',
             password: 'password',
           }
         }, (err, res, body) => {
@@ -2206,8 +2309,84 @@ describe('Parse.User testing', () => {
     }).then((user) => {
       expect(typeof user).toEqual('object');
       expect(user.authData).toBeUndefined();
+      expect(user.sessionToken).not.toBeUndefined();
+      // Session token should have changed
+      expect(user.sessionToken).not.toEqual(originalSessionToken);
+      // test that the sessionToken is valid
+      return new Promise((resolve, reject) => {
+        request.get({
+          url: 'http://localhost:8378/1/users/me',
+          headers: {
+            'X-Parse-Application-Id': Parse.applicationId,
+            'X-Parse-Session-Token': user.sessionToken,
+            'X-Parse-REST-API-Key': 'rest',
+          },
+          json: true
+        }, (err, res, body) => {
+          expect(body.username).toEqual(user.username);
+          expect(body.objectId).toEqual(originalUserId);
+          if (err) {
+            reject(err);
+          } else {
+            resolve(body);
+          }
+          done();
+        });
+      });
+    }).catch((err) => {
+      fail('no request should fail: ' + JSON.stringify(err));
+      done();
+    });
+  });
+
+  it_exclude_dbs(['postgres'])('should send email when upgrading from anon', (done) => {
+    
+    let emailCalled = false;
+    let emailOptions;
+    var emailAdapter = {
+      sendVerificationEmail: (options) => {
+        emailOptions = options;
+        emailCalled = true;
+      },
+      sendPasswordResetEmail: () => Promise.resolve(),
+      sendMail: () => Promise.resolve()
+    }
+    reconfigureServer({
+      appName: 'unused',
+      verifyUserEmails: true,
+      emailAdapter: emailAdapter,
+      publicServerURL: "http://localhost:8378/1"
+    })
+    // Simulate anonymous user save
+    return rp.post({
+        url: 'http://localhost:8378/1/classes/_User',
+        headers: {
+          'X-Parse-Application-Id': Parse.applicationId,
+          'X-Parse-REST-API-Key': 'rest',
+        },
+        json: {authData: {anonymous: {id: '00000000-0000-0000-0000-000000000001'}}}
+    }).then((user) => {
+      return rp.put({
+        url: 'http://localhost:8378/1/classes/_User/' + user.objectId,
+        headers: {
+          'X-Parse-Application-Id': Parse.applicationId,
+          'X-Parse-Session-Token': user.sessionToken,
+          'X-Parse-REST-API-Key': 'rest',
+        },
+        json: {
+          authData: {anonymous: null},
+          username: 'user',
+          email: 'user@email.com',
+          password: 'password',
+        }
+      });
+    }).then(() => {
+      expect(emailCalled).toBe(true);
+      expect(emailOptions).not.toBeUndefined();
+      expect(emailOptions.user.get('email')).toEqual('user@email.com');
       done();
     }).catch((err) => {
+      console.error(err);
       fail('no request should fail: ' + JSON.stringify(err));
       done();
     });
@@ -2372,9 +2551,16 @@ describe('Parse.User testing', () => {
           user.set('password', 'password');
           return user.save()
         })
+        .then(() => {
+          // Session token should have been recycled
+          expect(body.sessionToken).not.toEqual(user.getSessionToken());
+        })
         .then(() => obj.fetch())
+        .then((res) => {
+          done();
+        })
         .catch(error => {
-          expect(error.code).toEqual(Parse.Error.OBJECT_NOT_FOUND);
+          fail('should not fail')
           done();
         });
       })
