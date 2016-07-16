@@ -119,32 +119,27 @@ sendPushInCursor(body = {}, where = {}, config, auth, onPushStatusSaved = () => 
   }
   if (body.data && body.data.badge) {
     let badge = body.data.badge;
-    let op = {};
+    let restUpdate = {};
     if (typeof badge == 'string' && badge.toLowerCase() === 'increment') {
-      op = { $inc: { badge: 1 } }
+      restUpdate = { badge: { __op: 'Increment', amount: 1 } }
     } else if (Number(badge)) {
-      op = { $set: { badge: badge } }
+      restUpdate = { badge: badge }
     } else {
       throw "Invalid value for badge, expected number or 'Increment'";
     }
     let updateWhere = deepcopy(where);
 
     badgeUpdate = () => {
-      let badgeQuery = new RestQuery(config, auth, '_Installation', updateWhere);
-      return badgeQuery.buildRestWhere().then(() => {
-            let restWhere = deepcopy(badgeQuery.restWhere);
-      // Force iOS only devices
-      if (!restWhere['$and']) {
-        restWhere['$and'] = [badgeQuery.restWhere];
-      }
-      restWhere['$and'].push({
-        'deviceType': 'ios'
+      updateWhere.deviceType = 'ios';
+      // Build a real RestQuery so we can use it in RestWrite
+      let restQuery = new RestQuery(config, master(config), '_Installation', updateWhere);
+      return restQuery.buildRestWhere().then(() => {
+        let write = new RestWrite(config, master(config), '_Installation', restQuery.restWhere, restUpdate);
+        write.runOptions.many = true;
+        return write.execute();
       });
-      return config.database.adaptiveCollection("_Installation")
-              .then(coll => coll.updateMany(restWhere, op));
-    })
+    }
   }
-}
 let pushStatus = pushStatusHandler(config);
 return Promise.resolve().then(() => {
       return pushStatus.setInitial(body, where);
