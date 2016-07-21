@@ -117,29 +117,6 @@ sendPushInCursor(body = {}, where = {}, config, auth, onPushStatusSaved = () => 
   let badgeUpdate = () => {
     return Promise.resolve();
   }
-  if (body.data && body.data.badge) {
-    let badge = body.data.badge;
-    let restUpdate = {};
-    if (typeof badge == 'string' && badge.toLowerCase() === 'increment') {
-      restUpdate = { badge: { __op: 'Increment', amount: 1 } }
-    } else if (Number(badge)) {
-      restUpdate = { badge: badge }
-    } else {
-      throw "Invalid value for badge, expected number or 'Increment'";
-    }
-    let updateWhere = deepcopy(where);
-
-    badgeUpdate = () => {
-      updateWhere.deviceType = 'ios';
-      // Build a real RestQuery so we can use it in RestWrite
-      let restQuery = new RestQuery(config, master(config), '_Installation', updateWhere);
-      return restQuery.buildRestWhere().then(() => {
-        let write = new RestWrite(config, master(config), '_Installation', restQuery.restWhere, restUpdate);
-        write.runOptions.many = true;
-        return write.execute();
-      });
-    }
-  }
 let pushStatus = pushStatusHandler(config);
 return Promise.resolve().then(() => {
       return pushStatus.setInitial(body, where);
