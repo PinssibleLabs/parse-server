@@ -145,6 +145,20 @@ app.listen(1337, function() {
 
 For a full list of available options, run `parse-server --help`.
 
+## Logging
+
+Parse Server will, by default, will log:
+* to the console
+* daily rotating files as new line delimited JSON
+
+Logs are also be viewable in Parse Dashboard.
+
+**Want to log each request and response?** Set the `VERBOSE` environment variable when starting `parse-server`. Usage :-  `VERBOSE='1' parse-server --appId APPLICATION_ID --masterKey MASTER_KEY`
+
+**Want logs to be in placed in other folder?** Pass the `PARSE_SERVER_LOGS_FOLDER` environment variable when starting `parse-server`. Usage :-  `PARSE_SERVER_LOGS_FOLDER='<path-to-logs-folder>' parse-server --appId APPLICATION_ID --masterKey MASTER_KEY`
+
+**Want new line delimited JSON error logs (for consumption by CloudWatch, Google Cloud Logging, etc.)?** Pass the `JSON_LOGS` environment variable when starting `parse-server`. Usage :-  `JSON_LOGS='1' parse-server --appId APPLICATION_ID --masterKey MASTER_KEY`
+
 # Documentation
 
 The full documentation for Parse Server is available in the [wiki](https://github.com/ParsePlatform/parse-server/wiki). The [Parse Server guide](https://github.com/ParsePlatform/parse-server/wiki/Parse-Server-Guide) is a good place to get started. If you're interested in developing for Parse Server, the [Development guide](https://github.com/ParsePlatform/parse-server/wiki/Development-Guide) will help you get set up.
@@ -204,13 +218,24 @@ PARSE_SERVER_LOGS_FOLDER='<path-to-logs-folder>' parse-server --appId APPLICATIO
 
 ##### Email verification and password reset
 
-Verifying user email addresses and enabling password reset via email requries an email adapter. As part of the `parse-server` package we provide an adapter for sending email through Mailgun. To use it, sign up for Mailgun, and add this to your initialization code:
+Verifying user email addresses and enabling password reset via email requires an email adapter. As part of the `parse-server` package we provide an adapter for sending email through Mailgun. To use it, sign up for Mailgun, and add this to your initialization code:
 
 ```js
 var server = ParseServer({
   ...otherOptions,
   // Enable email verification
   verifyUserEmails: true,
+
+  // if `verifyUserEmails` is `true` and
+  //     if `emailVerifyTokenValidityDuration` is `undefined` then
+  //        email verify token never expires
+  //     else
+  //        email verify token expires after `emailVerifyTokenValidityDuration`
+  //
+  // `emailVerifyTokenValidityDuration` defaults to `undefined`
+  //
+  // email verify token below expires in 2 hours (= 2 * 60 * 60 == 7200 seconds)
+  emailVerifyTokenValidityDuration: 2 * 60 * 60, // in seconds (2 hours = 7200 seconds)
 
   // set preventLoginWithUnverifiedEmail to false to allow user to login without verifying their email
   // set preventLoginWithUnverifiedEmail to true to prevent user from login if their email is not verified
@@ -242,6 +267,7 @@ You can also use other email adapters contributed by the community such as:
 - [parse-server-sendgrid-adapter](https://www.npmjs.com/package/parse-server-sendgrid-adapter)
 - [parse-server-mandrill-adapter](https://www.npmjs.com/package/parse-server-mandrill-adapter)
 - [parse-server-simple-ses-adapter](https://www.npmjs.com/package/parse-server-simple-ses-adapter)
+- [parse-server-mailgun-adapter-template](https://www.npmjs.com/package/parse-server-mailgun-adapter-template)
 
 ### Using environment variables to configure Parse Server
 

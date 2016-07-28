@@ -11,6 +11,7 @@ var cryptoUtils = require('./cryptoUtils');
 var passwordCrypto = require('./password');
 var Parse = require('parse/node');
 var triggers = require('./triggers');
+var ClientSDK = require('./ClientSDK');
 import RestQuery from './RestQuery';
 import _         from 'lodash';
 
@@ -582,65 +583,83 @@ RestWrite.prototype.handleInstallation = function() {
   var promise = Promise.resolve();
 
   var idMatch; // Will be a match on either objectId or installationId
+  var objectIdMatch;
+  var installationIdMatch;
   var deviceTokenMatches = [];
 
+  // Instead of issuing 3 reads, let's do it with one OR.
+  let orQueries = [];
   if (this.query && this.query.objectId) {
-    promise = promise.then(() => {
-      return this.config.database.find('_Installation', {
+    orQueries.push({
         objectId: this.query.objectId
-      }, {}).then((results) => {
-        if (!results.length) {
-          throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND,
+    });
+  }
+  if (this.data.installationId) {
+    orQueries.push({
+      'installationId': this.data.installationId
+    });
+  }
+  if (this.data.deviceToken) {
+    orQueries.push({'deviceToken': this.data.deviceToken});
+  }
+
+  if (orQueries.length == 0) {
+    return;
+  }
+
+  promise = promise.then(() => {
+    return this.config.database.find('_Installation', {
+        '$or': orQueries
+    }, {});
+  }).then((results) => {
+    results.forEach((result) => {
+      if (this.query && this.query.objectId && result.objectId == this.query.objectId) {
+        objectIdMatch = result;
+      }
+      if (result.installationId == this.data.installationId) {
+        installationIdMatch = result;
+      }
+      if (result.deviceToken == this.data.deviceToken) {
+        deviceTokenMatches.push(result);
+      }
+    });
+
+    // Sanity checks when running a query
+    if (this.query && this.query.objectId) {
+      if (!objectIdMatch) {
+        throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND,
                                 'Object not found for update.');
-        }
-        idMatch = results[0];
-        if (this.data.installationId && idMatch.installationId &&
-          this.data.installationId !== idMatch.installationId) {
+      }
+      if (this.data.installationId && objectIdMatch.installationId &&
+          this.data.installationId !== objectIdMatch.installationId) {
           throw new Parse.Error(136,
                                 'installationId may not be changed in this ' +
                                 'operation');
         }
-        if (this.data.deviceToken && idMatch.deviceToken &&
-          this.data.deviceToken !== idMatch.deviceToken &&
-          !this.data.installationId && !idMatch.installationId) {
+        if (this.data.deviceToken && objectIdMatch.deviceToken &&
+          this.data.deviceToken !== objectIdMatch.deviceToken &&
+          !this.data.installationId && !objectIdMatch.installationId) {
           throw new Parse.Error(136,
                                 'deviceToken may not be changed in this ' +
                                 'operation');
         }
         if (this.data.deviceType && this.data.deviceType &&
-          this.data.deviceType !== idMatch.deviceType) {
+          this.data.deviceType !== objectIdMatch.deviceType) {
           throw new Parse.Error(136,
                                 'deviceType may not be changed in this ' +
                                 'operation');
         }
-        return;
-      });
-    });
-  }
+    }
 
-  // Check if we already have installations for the installationId/deviceToken
-  promise = promise.then(() => {
-    if (this.data.installationId) {
-      return this.config.database.find('_Installation', {
-        'installationId': this.data.installationId
-      });
+    if (this.query && this.query.objectId && objectIdMatch) {
+      idMatch = objectIdMatch;
     }
-    return Promise.resolve([]);
-  }).then((results) => {
-    if (results && results.length) {
-      // We only take the first match by installationId
-      idMatch = results[0];
+
+    if (this.data.installationId && installationIdMatch) {
+      idMatch = installationIdMatch;
     }
-    if (this.data.deviceToken) {
-      return this.config.database.find(
-        '_Installation',
-        {'deviceToken': this.data.deviceToken});
-    }
-    return Promise.resolve([]);
-  }).then((results) => {
-    if (results) {
-      deviceTokenMatches = results;
-    }
+
+  }).then(() => {
     if (!idMatch) {
       if (!deviceTokenMatches.length) {
         return;
@@ -775,9 +794,7 @@ RestWrite.prototype.runDatabaseOperation = function() {
     .then(response => {
       response.updatedAt = this.updatedAt;
       if (this.storage.changedByTrigger) {
-        Object.keys(this.data).forEach(fieldName => {
-          response[fieldName] = response[fieldName] || this.data[fieldName];
-        });
+        this.updateResponseWithData(response, this.data);
       }
       this.response = { response };
     });
@@ -835,9 +852,7 @@ RestWrite.prototype.runDatabaseOperation = function() {
         response.username = this.data.username;
       }
       if (this.storage.changedByTrigger) {
-        Object.keys(this.data).forEach(fieldName => {
-          response[fieldName] = response[fieldName] || this.data[fieldName];
-        });
+        this.updateResponseWithData(response, this.data);
       }
       this.response = {
         status: 201,
@@ -925,6 +940,25 @@ RestWrite.prototype.cleanUserAuthData = function() {
     }
   }
 };
+
+RestWrite.prototype.updateResponseWithData = function(response, data) {
+  let clientSupportsDelete = ClientSDK.supportsForwardDelete(this.clientSDK);
+  Object.keys(data).forEach(fieldName => {
+    let dataValue = data[fieldName];
+    let responseValue = response[fieldName];
+
+    response[fieldName] = responseValue || dataValue;
+    
+    // Strips operations from responses
+    if (response[fieldName] && response[fieldName].__op) {
+      delete response[fieldName];
+      if (clientSupportsDelete && dataValue.__op == 'Delete') {
+        response[fieldName] = dataValue;
+      }
+    }
+  });
+  return response;
+}
 
 export default RestWrite;
 module.exports = RestWrite;
