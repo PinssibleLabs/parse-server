@@ -256,7 +256,7 @@ var handleParseErrors = function(err, req, res, next) {
     res.json({code: Parse.Error.INTERNAL_SERVER_ERROR,
               message: 'Internal server error.'});
   }
-  next(err);
+  next();
 };
 
 function enforceMasterKeyAccess(req, res, next) {
