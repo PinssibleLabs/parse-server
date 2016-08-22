@@ -130,7 +130,7 @@ describe('PushController', () => {
     done();
   });
 
-  it_exclude_dbs(['postgres'])('properly increment badges', (done) => {
+  it('properly increment badges', (done) => {
 
    var payload = {data:{
      alert: "Hello World!",
@@ -184,13 +184,13 @@ describe('PushController', () => {
    }).then((result) => {
      done();
    }, (err) => {
-     fail("should not fail");
+     jfail(err);
      done();
    });
 
   });
 
-  it_exclude_dbs(['postgres'])('properly set badges to 1', (done) => {
+  it('properly set badges to 1', (done) => {
 
    var payload = {data: {
      alert: "Hello World!",
@@ -238,7 +238,7 @@ describe('PushController', () => {
 
   });
 
-  it_exclude_dbs(['postgres'])('properly creates _PushStatus', (done) => {
+  it('properly creates _PushStatus', (done) => {
 
     var installations = [];
     while(installations.length != 10) {
@@ -318,7 +318,7 @@ describe('PushController', () => {
 
   });
 
-  it_exclude_dbs(['postgres'])('should properly report failures in _PushStatus', (done) => {
+  it('should properly report failures in _PushStatus', (done) => {
     var pushAdapter = {
      send: function(body, installations) {
        return installations.map((installation) => {
@@ -357,7 +357,7 @@ describe('PushController', () => {
    })
   });
 
-  it_exclude_dbs(['postgres'])('should support full RESTQuery for increment', (done) => {
+  it('should support full RESTQuery for increment', (done) => {
     var payload = {data: {
      alert: "Hello World!",
      badge: 'Increment',
@@ -392,12 +392,12 @@ describe('PushController', () => {
    pushController.sendPush(payload, where, config, auth).then((result) => {
       done();
     }).catch((err) => {
-      fail('should not fail');
+      jfail(err);
       done();
     });
   });
 
-  it_exclude_dbs(['postgres'])('should support object type for alert', (done) => {
+  it('should support object type for alert', (done) => {
     var payload = {data: {
      alert: {
       'loc-key': 'hello_world',
