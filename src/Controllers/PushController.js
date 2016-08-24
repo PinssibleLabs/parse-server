@@ -168,7 +168,16 @@ return Promise.resolve().then(() => {
 
 static pushNotification(pushAdapter,pushStatus,body,installations){
 
-  installations=distinctInstallation(installations);
+  let distinctInstallations=[];
+  let json={};
+  for(var i=0;i<installations.length;i++){
+    if(!json[installations[i].deviceToken]){
+      distinctInstallations.push(installations[i]);
+      json[installations[i].deviceToken]=1;
+    }
+  }
+  installations=distinctInstallations;
+  console.log('pushController==>DistinctInstallation',installations.length);
   pushStatus.setRunning(installations);
   if (body.data && body.data.badge && typeof body.data.badge == 'string' && body.data.badge.toLowerCase() == "increment") {
     // Collect the badges to reduce the # of calls
@@ -264,23 +273,16 @@ return Promise.reject(err);
   }
 
 
-  static distinctInstallation(installations){
-    let distinctInstallationss=[];
-    let json={};
-    for(var i=0;i<installations.length;i++){
-      if(!json[installations[i].deviceToken]){
-        distinctInstallationss.push(installations[i]);
-        json[installations[i].transactionId]=1;
-      }
-    }
-    return Promise.resolve(distinctInstallationss);
 
-  }
 
 
   expectedAdapterType() {
     return PushAdapter;
   }
 }
+
+
+
+
 
 export default PushController;
