@@ -10,6 +10,8 @@ import passwordCrypto from '../password';
 import RestWrite      from '../RestWrite';
 let cryptoUtils = require('../cryptoUtils');
 let triggers = require('../triggers');
+let verifyUtil = require('../vendor/verifyUtil');
+
 
 export class UsersRouter extends ClassesRouter {
   handleFind(req) {
@@ -27,10 +29,24 @@ export class UsersRouter extends ClassesRouter {
 
   handleCreate(req) {
     let data = deepcopy(req.body);
-    req.body = data;
-    req.params.className = '_User';
+    if(data.email){
+      return verifyUtil.getVerifyEmail(data.email).then((result)=>{
+        if(result){
+          // Check for email uniqueness
+          req.body = data;
+          req.params.className = '_User';
+          return super.handleCreate(req);
+        }else{
+          throw new Parse.Error(Parse.Error.INVALID_EMAIL_ADDRESS,
+              'Email address format is invalid.');
+        }
+      })
+    }else{
+      req.body = data;
+      req.params.className = '_User';
 
-    return super.handleCreate(req);
+      return super.handleCreate(req);
+    }
   }
 
   handleUpdate(req) {
@@ -184,15 +200,21 @@ export class UsersRouter extends ClassesRouter {
       throw new Parse.Error(Parse.Error.EMAIL_MISSING, "you must provide an email");
     }
     let userController = req.config.userController;
-    return userController.sendPasswordResetEmail(email).then(token => {
-       return Promise.resolve({
-         response: {}
-       });
-    }, err => {
-      if (err.code === Parse.Error.OBJECT_NOT_FOUND) {
-        throw new Parse.Error(Parse.Error.EMAIL_NOT_FOUND, `No user found with email ${email}.`);
-      } else {
-        throw err;
+    return verifyUtil.getVerifyEmail(email).then((result)=>{
+      if(result){
+        // Check for email uniqueness
+        return userController.sendPasswordResetEmail(email).then((token) => {
+          return Promise.resolve({
+            response: {}
+          });
+        }, (err) => {
+          throw new Parse.Error(Parse.Error.EMAIL_NOT_FOUND, `no user found with email ${email}`);
+        });
+
+      }else{
+        throw new Parse.Error(Parse.Error.INVALID_EMAIL_ADDRESS,
+            'Email address format is invalid.');
+
       }
     });
   }
