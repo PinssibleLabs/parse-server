@@ -106,6 +106,7 @@ export class UserController extends AdaptableController {
     if (!this.shouldVerifyEmails) {
       return;
     }
+
     const token = encodeURIComponent(user._email_verify_token);
     // We may need to fetch the user in case of update email
     this.getUserIfNeeded(user).then((user) => {
@@ -116,11 +117,12 @@ export class UserController extends AdaptableController {
         link: link,
         user: inflate('_User', user),
       };
-      if (this.adapter.sendVerificationEmail) {
-        this.adapter.sendVerificationEmail(options);
-      } else {
-        this.adapter.sendMail(this.defaultVerificationEmail(options));
-      }
+      console.log('send Mail',user.email);
+      //if (this.adapter.sendVerificationEmail) {
+      // // this.adapter.sendVerificationEmail(options);
+      //} else {
+      //  //this.adapter.sendMail(this.defaultVerificationEmail(options));
+      //}
     });
   }
 
