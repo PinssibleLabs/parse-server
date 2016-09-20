@@ -8,7 +8,7 @@
  * Created by gongchen on 16/9/19.
  */
 'use strict';
-let request = require('./Request');
+let request = require('./request');
 let querystring=require('querystring');
 
 class sendEmailUtil {
