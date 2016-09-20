@@ -43,6 +43,33 @@ class Request {
             });
         });
     }
+    postDataHttp(postData,options){
+        return new Promise((resolve, reject) => {
+            var data = '';
+            var req = http.request(options, (res) => {
+
+                res.setEncoding('utf8');
+                res.on('data', (chunk) => {
+                    console.log(`BODY: ${chunk}`);
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    resolve(data);
+                })
+            });
+            req.write(postData);
+            req.end();
+            req.on('error', (e) => {
+                console.log(`problem with request: ${e.message}`);
+                reject(e);
+            });
+
+        });
+
+
+
+
+    }
 }
 
 module.exports = new Request();

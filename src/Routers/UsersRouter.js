@@ -200,7 +200,8 @@ export class UsersRouter extends ClassesRouter {
       throw new Parse.Error(Parse.Error.EMAIL_MISSING, "you must provide an email");
     }
     let userController = req.config.userController;
-    return verifyUtil.getVerifyEmail(email).then((result)=>{
+    let publicKey=req.config.mailgunApiKey;
+    return verifyUtil.getVerifyEmail(email,publicKey).then((result)=>{
       if(result){
         // Check for email uniqueness
         return userController.sendPasswordResetEmail(email).then((token) => {

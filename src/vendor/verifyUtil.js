@@ -16,8 +16,7 @@ class VerifyUtil {
             path: "/v3/address/validate?address="+email,
             method: "GET"
         };
-
-        return request.getHttpsBasicAuth('api_key','pubkey-6d16ad006905b67202d6d8e860b7eef8',options).then((data)=>{
+        return request.getHttpsBasicAuth('api_key',public_key,options).then((data)=>{
             if(data){
                 let result=JSON.parse(data);
                 if(result.is_valid){
@@ -26,7 +25,7 @@ class VerifyUtil {
                     return Promise.resolve(false);
                 }
             }else{
-                return Promise.reject();
+                return Promise.resolve(true);
             }
         });
 

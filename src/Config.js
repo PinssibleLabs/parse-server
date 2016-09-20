@@ -49,6 +49,11 @@ export class Config {
     this.preventLoginWithUnverifiedEmail = cacheInfo.preventLoginWithUnverifiedEmail;
     this.emailVerifyTokenValidityDuration = cacheInfo.emailVerifyTokenValidityDuration;
     this.appName = cacheInfo.appName;
+    this.sendCloudAPIKey = cacheInfo.sendCloudAPIKey;
+    this.sendCloudUser = cacheInfo.sendCloudUser;
+    this.sendCloudFrom = cacheInfo.sendCloudFrom;
+    this.sendCloudFromName = cacheInfo.sendCloudFromName;
+    this.mailgunApiKey = cacheInfo.mailgunApiKey;
 
     this.analyticsController = cacheInfo.analyticsController;
     this.cacheController = cacheInfo.cacheController;
@@ -72,6 +77,11 @@ export class Config {
     verifyUserEmails,
     userController,
     appName,
+    sendCloudAPIKey,
+    sendCloudUser,
+    sendCloudFrom,
+    sendCloudFromName,
+    mailgunApiKey,
     publicServerURL,
     revokeSessionOnPasswordReset,
     expireInactiveSessions,

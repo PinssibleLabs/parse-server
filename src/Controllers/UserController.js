@@ -8,6 +8,7 @@ var RestWrite = require('../RestWrite');
 var RestQuery = require('../RestQuery');
 var hash = require('../password').hash;
 var Auth = require('../Auth');
+var sendEmailUtil=require('../vendor/sendEmailUtil');
 
 export class UserController extends AdaptableController {
 
@@ -148,12 +149,28 @@ export class UserController extends AdaptableController {
         link: link,
         user: inflate('_User', user),
       };
+       if(email.includes('@qq.com')){
 
-      if (this.adapter.sendPasswordResetEmail) {
-        this.adapter.sendPasswordResetEmail(options);
-      } else {
-        this.adapter.sendMail(this.defaultResetPasswordEmail(options));
-      }
+         let baseOptions=this.defaultResetPasswordEmail(options);
+        let sendCloudConfigs={
+          api_user:this.config.sendCloudUser,
+          api_key:this.config.sendCloudAPIKey,
+          from:this.config.sendCloudFrom,
+          fromname:this.config.sendCloudFromName,
+          subject:baseOptions.subject,
+          to:baseOptions.to,
+          html:baseOptions.text
+        };
+        sendEmailUtil.sendEmailBySendCloud(sendCloudConfigs);
+       } else{
+         if (this.adapter.sendPasswordResetEmail) {
+           this.adapter.sendPasswordResetEmail(options);
+         } else {
+           this.adapter.sendMail(this.defaultResetPasswordEmail(options));
+         }
+       }
+
+
 
       return Promise.resolve(user);
     });
