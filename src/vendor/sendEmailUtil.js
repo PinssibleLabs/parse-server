@@ -18,7 +18,7 @@ class sendEmailUtil {
             apiUser:configs.api_user,
             apiKey:configs.api_key,
             from:configs.from,
-            fromname:configs.fromname,
+            fromName:configs.fromName,
             subject:configs.subject,
             to:configs.to,
             html:configs.html

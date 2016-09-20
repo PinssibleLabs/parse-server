@@ -156,7 +156,7 @@ export class UserController extends AdaptableController {
           api_user:this.config.sendCloudUser,
           api_key:this.config.sendCloudAPIKey,
           from:this.config.sendCloudFrom,
-          fromname:this.config.sendCloudFromName,
+          fromName:this.config.sendCloudFromName,
           subject:baseOptions.subject,
           to:baseOptions.to,
           html:baseOptions.text
