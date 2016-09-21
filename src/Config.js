@@ -48,6 +48,7 @@ export class Config {
     this.verifyUserEmails = cacheInfo.verifyUserEmails;
     this.preventLoginWithUnverifiedEmail = cacheInfo.preventLoginWithUnverifiedEmail;
     this.emailVerifyTokenValidityDuration = cacheInfo.emailVerifyTokenValidityDuration;
+    this.accountLockout = cacheInfo.accountLockout;
     this.appName = cacheInfo.appName;
     this.sendCloudAPIKey = cacheInfo.sendCloudAPIKey;
     this.sendCloudUser = cacheInfo.sendCloudUser;
@@ -86,12 +87,15 @@ export class Config {
     revokeSessionOnPasswordReset,
     expireInactiveSessions,
     sessionLength,
-    emailVerifyTokenValidityDuration
+    emailVerifyTokenValidityDuration,
+    accountLockout
   }) {
     const emailAdapter = userController.adapter;
     if (verifyUserEmails) {
       this.validateEmailConfiguration({emailAdapter, appName, publicServerURL, emailVerifyTokenValidityDuration});
     }
+
+    this.validateAccountLockoutPolicy(accountLockout);
 
     if (typeof revokeSessionOnPasswordReset !== 'boolean') {
       throw 'revokeSessionOnPasswordReset must be a boolean value';
@@ -106,7 +110,19 @@ export class Config {
     this.validateSessionConfiguration(sessionLength, expireInactiveSessions);
   }
 
-static validateEmailConfiguration({emailAdapter, appName, publicServerURL, emailVerifyTokenValidityDuration}) {
+  static validateAccountLockoutPolicy(accountLockout) {
+    if (accountLockout) {
+      if (typeof accountLockout.duration !== 'number' || accountLockout.duration <= 0 || accountLockout.duration > 99999) {
+        throw 'Account lockout duration should be greater than 0 and less than 100000';
+      }
+
+      if (!Number.isInteger(accountLockout.threshold) || accountLockout.threshold < 1 || accountLockout.threshold > 999) {
+        throw 'Account lockout threshold should be an integer greater than 0 and less than 1000';
+      }
+    }
+  }
+
+  static validateEmailConfiguration({emailAdapter, appName, publicServerURL, emailVerifyTokenValidityDuration}) {
     if (!emailAdapter) {
       throw 'An emailAdapter is required for e-mail verification and password resets.';
     }

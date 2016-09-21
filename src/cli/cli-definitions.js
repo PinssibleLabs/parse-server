@@ -8,6 +8,15 @@ function numberParser(key) {
   }
 }
 
+function numberOrBoolParser(key) {
+  return function(opt) {
+    if (typeof opt === 'boolean') {
+      return opt;
+    }
+    return numberParser(key)(opt);
+  }
+}
+
 function objectParser(opt) {
   if (typeof opt == 'object') {
     return opt;
@@ -163,6 +172,11 @@ export default {
     help: "Email verification token validity duration",
     action: numberParser("emailVerifyTokenValidityDuration")
   },
+  "accountLockout": {
+    env: "PARSE_SERVER_ACCOUNT_LOCKOUT",
+    help: "account lockout policy for failed login attempts",
+    action: objectParser
+  },
   "appName": {
     env: "PARSE_SERVER_APP_NAME",
     help: "Sets the app name"
@@ -224,6 +238,6 @@ export default {
   },
   "cluster": {
     help: "Run with cluster, optionally set the number of processes default to os.cpus().length",
-    action: numberParser("cluster"),
+    action: numberOrBoolParser("cluster")
   }
 };

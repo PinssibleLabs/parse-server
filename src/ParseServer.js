@@ -45,6 +45,7 @@ import { ParseLiveQueryServer } from './LiveQuery/ParseLiveQueryServer';
 import { PublicAPIRouter }      from './Routers/PublicAPIRouter';
 import { PushController }       from './Controllers/PushController';
 import { PushRouter }           from './Routers/PushRouter';
+import { CloudCodeRouter }      from './Routers/CloudCodeRouter';
 import { randomString }         from './cryptoUtils';
 import { RolesRouter }          from './Routers/RolesRouter';
 import { SchemasRouter }        from './Routers/SchemasRouter';
@@ -57,6 +58,8 @@ import DatabaseController       from './Controllers/DatabaseController';
 import SchemaCache              from './Controllers/SchemaCache';
 import ParsePushAdapter         from 'parse-server-push-adapter';
 import MongoStorageAdapter      from './Adapters/Storage/Mongo/MongoStorageAdapter';
+
+import { ParseServerRESTController } from './ParseServerRESTController';
 // Mutate the Parse object to add the Cloud Code handlers
 addParseCloud();
 
@@ -128,6 +131,7 @@ class ParseServer {
     verifyUserEmails = defaults.verifyUserEmails,
     preventLoginWithUnverifiedEmail = defaults.preventLoginWithUnverifiedEmail,
     emailVerifyTokenValidityDuration,
+    accountLockout,
     cacheAdapter,
     emailAdapter,
     publicServerURL,
@@ -215,6 +219,7 @@ class ParseServer {
       verifyUserEmails: verifyUserEmails,
       preventLoginWithUnverifiedEmail: preventLoginWithUnverifiedEmail,
       emailVerifyTokenValidityDuration: emailVerifyTokenValidityDuration,
+      accountLockout: accountLockout,
       allowClientClassCreation: allowClientClassCreation,
       authDataManager: authDataManager(oauth, enableAnonymousUsers),
       appName: appName,
@@ -278,36 +283,11 @@ class ParseServer {
     api.use('/', bodyParser.urlencoded({extended: false}), new PublicAPIRouter().expressRouter());
 
     api.use(bodyParser.json({ 'type': '*/*' , limit: maxUploadSize }));
+    api.use(middlewares.allowCrossDomain);
     api.use(middlewares.allowMethodOverride);
+    api.use(middlewares.handleParseHeaders);
 
-    let routers = [
-      new ClassesRouter(),
-      new UsersRouter(),
-      new SessionsRouter(),
-      new RolesRouter(),
-      new AnalyticsRouter(),
-      new InstallationsRouter(),
-      new FunctionsRouter(),
-      new SchemasRouter(),
-      new PushRouter(),
-      new LogsRouter(),
-      new IAPValidationRouter(),
-      new FeaturesRouter(),
-      new GlobalConfigRouter(),
-      new PurgeRouter(),
-      new HooksRouter()
-    ];
-
-    let routes = routers.reduce((memo, router) => {
-      return memo.concat(router.routes);
-    }, []);
-
-    let appRouter = new PromiseRouter(routes, appId);
-    appRouter.use(middlewares.allowCrossDomain);
-    appRouter.use(middlewares.handleParseHeaders);
-    
-    batch.mountOnto(appRouter);
-
+    let appRouter = ParseServer.promiseRouter({ appId });
     api.use(appRouter.expressRouter());
 
     api.use(middlewares.handleParseErrors);
@@ -323,7 +303,40 @@ class ParseServer {
         }
       });
     }
+    if (process.env.PARSE_SERVER_ENABLE_EXPERIMENTAL_DIRECT_ACCESS === '1') {
+      Parse.CoreManager.setRESTController(ParseServerRESTController(appId, appRouter));
+    }
     return api;
+  }
+
+  static promiseRouter({appId}) {
+    let routers = [
+      new ClassesRouter(),
+      new UsersRouter(),
+      new SessionsRouter(),
+      new RolesRouter(),
+      new AnalyticsRouter(),
+      new InstallationsRouter(),
+      new FunctionsRouter(),
+      new SchemasRouter(),
+      new PushRouter(),
+      new LogsRouter(),
+      new IAPValidationRouter(),
+      new FeaturesRouter(),
+      new GlobalConfigRouter(),
+      new PurgeRouter(),
+      new HooksRouter(),
+      new CloudCodeRouter()
+    ];
+
+    let routes = routers.reduce((memo, router) => {
+      return memo.concat(router.routes);
+    }, []);
+
+    let appRouter = new PromiseRouter(routes, appId);
+
+    batch.mountOnto(appRouter);
+    return appRouter;
   }
 
   static createLiveQueryServer(httpServer, config) {

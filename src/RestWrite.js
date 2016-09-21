@@ -63,8 +63,6 @@ RestWrite.prototype.execute = function() {
   }).then(() => {
     return this.validateClientClassCreation();
   }).then(() => {
-    return this.validateSchema();
-  }).then(() => {
     return this.handleInstallation();
   }).then(() => {
     return this.handleSession();
@@ -72,6 +70,8 @@ RestWrite.prototype.execute = function() {
     return this.validateAuthData();
   }).then(() => {
     return this.runBeforeTrigger();
+  }).then(() => {
+    return this.validateSchema();
   }).then(() => {
     return this.setRequiredFieldsIfNeeded();
   }).then(() => {
@@ -176,7 +176,6 @@ RestWrite.prototype.runBeforeTrigger = function() {
       if (this.query && this.query.objectId) {
         delete this.data.objectId
       }
-      return this.validateSchema();
     }
   });
 };
@@ -263,7 +262,7 @@ RestWrite.prototype.findUsersWithAuthData = function(authData) {
     memo.push(query);
     return memo;
   }, []).filter((q) => {
-    return typeof q !== undefined;
+    return typeof q !== 'undefined';
   });
 
   let findPromise = Promise.resolve([]);
@@ -437,6 +436,11 @@ RestWrite.prototype.createSessionTokenIfNeeded = function() {
 }
 
 RestWrite.prototype.createSessionToken = function() {
+  // cloud installationId from Cloud Code,
+  // never create session tokens from there.
+  if (this.auth.installationId && this.auth.installationId === 'cloud') {
+    return;
+  }
   var token = 'r:' + cryptoUtils.newToken();
 
   var expiresAt = this.config.generateSessionExpiresAt();
