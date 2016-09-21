@@ -30,7 +30,8 @@ export class UsersRouter extends ClassesRouter {
   handleCreate(req) {
     let data = deepcopy(req.body);
     if(data.email){
-      return verifyUtil.getVerifyEmail(data.email).then((result)=>{
+      let publicKey=req.config.mailgunApiKey;
+      return verifyUtil.getVerifyEmail(data.email,publicKey).then((result)=>{
         if(result){
           // Check for email uniqueness
           req.body = data;
