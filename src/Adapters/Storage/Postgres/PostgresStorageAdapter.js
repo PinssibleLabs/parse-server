@@ -445,7 +445,7 @@ export class PostgresStorageAdapter {
         relations.push(fieldName)
         return;
       }
-      if (['_rperm', '_wperm'].includes(fieldName)) {
+      if (['_rperm', '_wperm'].indexOf(fieldName) >= 0) {
         parseType.contents = { type: 'String' };
       }
       valuesArray.push(fieldName);
@@ -678,7 +678,7 @@ export class PostgresStorageAdapter {
           valuesArray.push(object[fieldName].objectId);
           break;
         case 'Array':
-          if (['_rperm', '_wperm'].includes(fieldName)) {
+          if (['_rperm', '_wperm'].indexOf(fieldName) >= 0) {
             valuesArray.push(object[fieldName]);
           } else {
             valuesArray.push(JSON.stringify(object[fieldName]));
@@ -707,7 +707,7 @@ export class PostgresStorageAdapter {
     let initialValues = valuesArray.map((val, index) => {
       let termination = '';
       let fieldName = columnsArray[index];
-      if (['_rperm','_wperm'].includes(fieldName)) {
+      if (['_rperm','_wperm'].indexOf(fieldName) >= 0) {
         termination = '::text[]';
       } else if (schema.fields[fieldName] && schema.fields[fieldName].type === 'Array') {
         termination = '::jsonb';
@@ -921,8 +921,8 @@ export class PostgresStorageAdapter {
     });
   }
 
-  find(className, schema, query, { skip, limit, sort }) {
-    debug('find', className, query, {skip, limit, sort});
+  find(className, schema, query, { skip, limit, sort, keys }) {
+    debug('find', className, query, {skip, limit, sort, keys });
     const hasLimit = limit !== undefined;
     const hasSkip = skip !== undefined;
     let values = [className];
@@ -954,7 +954,19 @@ export class PostgresStorageAdapter {
       sortPattern = `ORDER BY ${where.sorts.join(',')}`;
     }
 
-    const qs = `SELECT * FROM $1:name ${wherePattern} ${sortPattern} ${limitPattern} ${skipPattern}`;
+    let columns = '*';
+    if (keys) {
+      // Exclude empty keys
+      keys = keys.filter((key) => {
+        return key.length > 0;
+      });
+      columns = keys.map((key, index) => {
+        return `$${index+values.length+1}:name`;
+      }).join(',');
+      values = values.concat(keys);
+    }
+
+    const qs = `SELECT ${columns} FROM $1:name ${wherePattern} ${sortPattern} ${limitPattern} ${skipPattern}`;
     debug(qs, values);
     return this._client.any(qs, values)
     .catch((err) => {
