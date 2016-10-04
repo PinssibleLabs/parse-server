@@ -733,6 +733,10 @@ const mongoObjectToParseObject = (className, mongoObject, schema) => {
         // Those keys will be deleted if needed in the DB Controller
         restObject[key] = mongoObject[key];
         break;
+        case '_failed_login_count':
+          // Those keys will be deleted if needed in the DB Controller
+          restObject[key] = mongoObject[key];
+          break;
       case '_session_token':
         restObject['sessionToken'] = mongoObject[key];
         break;
