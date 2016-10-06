@@ -729,6 +729,7 @@ const mongoObjectToParseObject = (className, mongoObject, schema) => {
       case '_email_verify_token':
       case '_perishable_token':
       case '_tombstone':
+      case '_account_lockout_expires_at':
       case '_email_verify_token_expires_at':
         // Those keys will be deleted if needed in the DB Controller
         restObject[key] = mongoObject[key];
