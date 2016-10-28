@@ -127,12 +127,11 @@ return Promise.resolve().then(() => {
   return  config.database.findCursor("_Installation", where);
 }).then(function(cursor)
 {
-  var pageSize = 10000;
+  var pageSize = 1000;
   var i = 0;
   var cache = [];
   // Execute the each command, triggers for each document
   cursor.each(function (err, item) {
-
     if(item!=null){
       i++;
       cache.push(item);
@@ -150,7 +149,6 @@ return Promise.resolve().then(() => {
       if (item == null) {
 
         // Show that the cursor is closed
-
         var installations = cache;
         cache=[];
         if(installations.length==0)
