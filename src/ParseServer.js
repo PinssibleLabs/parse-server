@@ -7,7 +7,9 @@ var batch = require('./batch'),
     multer = require('multer'),
     Parse = require('parse/node').Parse,
     path = require('path'),
-    authDataManager = require('./authDataManager');
+   timeout =require('connect-timeout'),
+   authDataManager = require('./authDataManager');
+
 
 if (!global._babelPolyfill) {
   require('babel-polyfill');
@@ -269,6 +271,8 @@ class ParseServer {
     // This app serves the Parse API directly.
     // It's the equivalent of https://api.parse.com/1 in the hosted Parse API.
     var api = express();
+    api.use(timeout('5s'));
+
     //api.use("/apps", express.static(__dirname + "/public"));
     // File handling needs to be before default middlewares are applied
     api.use('/', middlewares.allowCrossDomain, new FilesRouter().expressRouter({
