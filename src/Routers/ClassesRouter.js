@@ -100,10 +100,6 @@ export class ClassesRouter extends PromiseRouter {
             if(req.params.className=="android_slave"){
               result_slave.expire_time=Date.now()+30*60*1000;
               result_slave.response=response;
-            }else if(req.params.className=="android_sound"){
-
-              result_android_sound.expire_time=Date.now()+30*60*1000;
-              result_android_sound.response=response;
             }
 
             return { response: response };
