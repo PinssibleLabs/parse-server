@@ -2,17 +2,31 @@
 
 import PromiseRouter   from '../PromiseRouter';
 import * as middleware from "../middlewares";
-
+let result={};
 export class GlobalConfigRouter extends PromiseRouter {
+
+
   getGlobalConfig(req) {
-    return req.config.database.find('_GlobalConfig', { objectId: "1" }, { limit: 1 }).then((results) => {
-      if (results.length != 1) {
-        // If there is no config in the database - return empty config.
-        return { response: { params: {} } };
-      }
-      let globalConfig = results[0];
-      return { response: { params: globalConfig.params } };
-    });
+
+    if(result&&result.config_expire&&result.config_expire>Date.now()&&result.params){
+      console.log("get config from cache");
+      return Promise.resolve({ response: { params: result.params } });
+    }else{
+      return req.config.database.find('_GlobalConfig', { objectId: "1" }, { limit: 1 }).then((results) => {
+        if (results.length != 1) {
+          // If there is no config in the database - return empty config.
+          return { response: { params: {} } };
+        }
+        let globalConfig = results[0];
+        //设置30分钟读取一次数据库
+        result.config_expire=Date.now()+30*60*1000;
+        result.params=globalConfig.params;
+        console.log("get config from db");
+
+        return { response: { params: globalConfig.params } };
+      });
+    }
+
   }
 
   updateGlobalConfig(req) {

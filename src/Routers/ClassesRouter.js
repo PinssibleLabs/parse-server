@@ -5,7 +5,10 @@ import _             from 'lodash';
 import url           from 'url';
 
 const ALLOWED_GET_QUERY_KEYS = ['keys', 'include'];
-
+var result_slave={};
+var result_android_banner={};
+var result_banner_meta={};
+var result_android_sound={};
 export class ClassesRouter extends PromiseRouter {
 
   handleFind(req) {
@@ -46,17 +49,70 @@ export class ClassesRouter extends PromiseRouter {
     if (typeof body.where === 'string') {
       body.where = JSON.parse(body.where);
     }
-    return rest.find(req.config, req.auth, req.params.className, body.where, options, req.info.clientSDK)
-      .then((response) => {
-        if (response && response.results) {
-          for (let result of response.results) {
-            if (result.sessionToken) {
-              result.sessionToken = req.info.sessionToken || result.sessionToken;
+
+    if(req.params.className=="android_slave"
+        &&result_slave
+        &&result_slave.expire_time
+        &&result_slave.expire_time>Date.now()
+        &&result_slave.response){
+
+      console.log('find from cache ',req.params.className);
+
+      return Promise.resolve({ response: result_slave.response });
+
+    }else if(req.params.className=="android_banner"
+        &&result_android_banner
+        &&result_android_banner.expire_time
+        &&result_android_banner.expire_time>Date.now()
+        &&result_android_banner.response){
+
+      console.log('find from cache',req.params.className);
+
+      return Promise.resolve({ response: result_android_banner.response });
+    }else if(req.params.className=="banner_meta"
+        &&result_banner_meta
+        &&result_banner_meta.expire_time
+        &&result_banner_meta.expire_time>Date.now()
+        &&result_banner_meta.response){
+      console.log('find from cache',req.params.className);
+
+      return Promise.resolve({ response: result_banner_meta.response });
+    }else if(req.params.className=="android_sound"
+        &&result_android_sound
+        &&result_android_sound.expire_time
+        &&result_android_sound.expire_time>Date.now()
+        &&result_android_sound.response){
+      console.log('find from cache',req.params.className);
+
+      return Promise.resolve({ response: result_android_sound.response });
+
+    }else {
+      console.log('find from db',req.params.className);
+      return rest.find(req.config, req.auth, req.params.className, body.where, options, req.info.clientSDK)
+          .then((response) => {
+            if (response && response.results) {
+              for (let result of response.results) {
+                if (result.sessionToken) {
+                  result.sessionToken = req.info.sessionToken || result.sessionToken;
+                }
+              }
             }
-          }
-        }
-        return { response: response };
-      });
+            if(req.params.className=="android_slave"){
+              result_slave.expire_time=Date.now()+30*60*1000;
+              result_slave.response=response;
+            }else if(req.params.className=="android_banner"){
+              result_android_banner.expire_time=Date.now()+30*60*1000;
+              result_android_banner.response=response;
+            }else if(req.params.className=="android_sound"){
+
+              result_android_sound.expire_time=Date.now()+30*60*1000;
+              result_android_sound.response=response;
+            }
+
+            return { response: response };
+          });
+    }
+
   }
 
   // Returns a promise for a {response} object.
@@ -94,6 +150,8 @@ export class ClassesRouter extends PromiseRouter {
             response.results[0].sessionToken = req.info.sessionToken;
           }
         }
+
+
         return { response: response.results[0] };
       });
   }
