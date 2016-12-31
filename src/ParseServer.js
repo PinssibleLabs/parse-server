@@ -295,7 +295,8 @@ class ParseServer {
           console.error(`Unable to listen on port ${err.port}. The port is already in use.`);
           process.exit(0);
         } else {
-          throw err;
+          //注释该行代码防止重启
+          //throw err;
         }
       });
     }
