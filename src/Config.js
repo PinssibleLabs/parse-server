@@ -32,8 +32,11 @@ export class Config {
     this.restAPIKey = cacheInfo.restAPIKey;
     this.webhookKey = cacheInfo.webhookKey;
     this.fileKey = cacheInfo.fileKey;
-    this.facebookAppIds = cacheInfo.facebookAppIds;
+    this.cacheConfigs=cacheInfo.cacheConfigs;
+
+        this.facebookAppIds = cacheInfo.facebookAppIds;
     this.allowClientClassCreation = cacheInfo.allowClientClassCreation;
+
 
     // Create a new DatabaseController per request
     if (cacheInfo.databaseController) {
