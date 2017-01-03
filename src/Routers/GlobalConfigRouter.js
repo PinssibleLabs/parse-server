@@ -8,9 +8,15 @@ export class GlobalConfigRouter extends PromiseRouter {
 
   getGlobalConfig(req) {
 
-    if(result&&result.config_expire&&result.config_expire>Date.now()&&result.params){
-      console.log("get config from cache");
-      return Promise.resolve({ response: { params: result.params } });
+    let cacheConfigs=req.config.cacheConfigs;
+    let applicationId=req.config.applicationId;
+    let cacheKey=applicationId+"_GlobalConfig";
+
+    console.log("get config from cache");
+
+    let cacheResult=result[cacheKey];
+    if(cacheResult&&cacheResult.config_expire&&cacheResult.config_expire>Date.now()&&cacheResult.params){
+      return Promise.resolve({ response: { params: cacheResult.params } });
     }else{
       return req.config.database.find('_GlobalConfig', { objectId: "1" }, { limit: 1 }).then((results) => {
         if (results.length != 1) {
@@ -18,11 +24,14 @@ export class GlobalConfigRouter extends PromiseRouter {
           return { response: { params: {} } };
         }
         let globalConfig = results[0];
-        //设置30分钟读取一次数据库
-        result.config_expire=Date.now()+30*60*1000;
-        result.params=globalConfig.params;
-        console.log("get config from db");
+        //如果该配置中存在cacheConfigs并且存在_GlobalConfig那么需要缓存
+        if(cacheConfigs&&cacheConfigs.indexOf("_GlobalConfig")>=0){
+            result[cacheKey]={
+              config_expire:Date.now()+10*60*1000,
+              params:globalConfig.params
+            }
 
+        }
         return { response: { params: globalConfig.params } };
       });
     }
