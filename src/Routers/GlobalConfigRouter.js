@@ -11,9 +11,7 @@ export class GlobalConfigRouter extends PromiseRouter {
     let cacheConfigs=req.config.cacheConfigs;
     let applicationId=req.config.applicationId;
     let cacheKey=applicationId+"_GlobalConfig";
-
-    console.log("get config from cache");
-
+    
     let cacheResult=result[cacheKey];
     if(cacheResult&&cacheResult.config_expire&&cacheResult.config_expire>Date.now()&&cacheResult.params){
       return Promise.resolve({ response: { params: cacheResult.params } });
