@@ -3,15 +3,20 @@ import PromiseRouter from '../PromiseRouter';
 import rest          from '../rest';
 import _             from 'lodash';
 import url           from 'url';
-
+import crypto         from  'crypto';
 const ALLOWED_GET_QUERY_KEYS = ['keys', 'include'];
 var result_slave={};
 var result_android_banner={};
 var result_banner_meta={};
 var result_android_sound={};
+var result={};
+
 export class ClassesRouter extends PromiseRouter {
 
   handleFind(req) {
+
+    let applicationId=req.config.applicationId;
+    let cacheConfigs=req.config.cacheConfigs;
     let body = Object.assign(req.body, ClassesRouter.JSONFromQuery(req.query));
     let options = {};
     let allowConstraints = ['skip', 'limit', 'order', 'count', 'keys',
@@ -50,43 +55,18 @@ export class ClassesRouter extends PromiseRouter {
       body.where = JSON.parse(body.where);
     }
 
-    if(req.params.className=="android_slave"
-        &&result_slave
-        &&result_slave.expire_time
-        &&result_slave.expire_time>Date.now()
-        &&result_slave.response){
+    let cacheKey=applicationId+req.params.className+JSON.stringify(body.where)+JSON.stringify(options);
+    let hasher=crypto.createHash("md5");
+    hasher.update(cacheKey);
+    let md5CacheKey=hasher.digest('hex').toString();
+    if(req.params.className!="_GlobalConfig"
+        &&result[md5CacheKey]
+        &&cacheConfigs.length>0
+        &&result[md5CacheKey].expire_time>Date.now()
+        &&result[md5CacheKey].response){
+        return Promise.resolve({ response: result[md5CacheKey].response });
 
-      console.log('find from cache ',req.params.className);
-
-      return Promise.resolve({ response: result_slave.response });
-
-    }else if(req.params.className=="android_banner"
-        &&result_android_banner
-        &&result_android_banner.expire_time
-        &&result_android_banner.expire_time>Date.now()
-        &&result_android_banner.response){
-
-      console.log('find from cache',req.params.className);
-
-      return Promise.resolve({ response: result_android_banner.response });
-    }else if(req.params.className=="banner_meta"
-        &&result_banner_meta
-        &&result_banner_meta.expire_time
-        &&result_banner_meta.expire_time>Date.now()
-        &&result_banner_meta.response){
-      console.log('find from cache',req.params.className);
-
-      return Promise.resolve({ response: result_banner_meta.response });
-    }else if(req.params.className=="android_sound"
-        &&result_android_sound
-        &&result_android_sound.expire_time
-        &&result_android_sound.expire_time>Date.now()
-        &&result_android_sound.response){
-      console.log('find from cache',req.params.className);
-
-      return Promise.resolve({ response: result_android_sound.response });
-
-    }else {
+    } else {
       console.log('find from db',req.params.className);
       return rest.find(req.config, req.auth, req.params.className, body.where, options, req.info.clientSDK)
           .then((response) => {
@@ -97,9 +77,12 @@ export class ClassesRouter extends PromiseRouter {
                 }
               }
             }
-            if(req.params.className=="android_slave"){
-              result_slave.expire_time=Date.now()+30*60*1000;
-              result_slave.response=response;
+            if(cacheConfigs&&cacheConfigs.length>0&&cacheConfigs.indexOf(req.params.className)>=0){
+
+              result[md5CacheKey]={
+                  expire_time:Date.now()+10*60*1000,
+                  response:response
+              }
             }
 
             return { response: response };
