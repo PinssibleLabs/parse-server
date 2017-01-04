@@ -32,6 +32,8 @@ export class Config {
     this.restAPIKey = cacheInfo.restAPIKey;
     this.webhookKey = cacheInfo.webhookKey;
     this.fileKey = cacheInfo.fileKey;
+    this.cacheConfigs=cacheInfo.cacheConfigs;
+    this.putForbiddenConfigs=cacheInfo.putForbiddenConfigs;
     this.facebookAppIds = cacheInfo.facebookAppIds;
     this.allowClientClassCreation = cacheInfo.allowClientClassCreation;
 

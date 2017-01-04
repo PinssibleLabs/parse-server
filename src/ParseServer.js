@@ -121,6 +121,8 @@ class ParseServer {
     restAPIKey,
     webhookKey,
     fileKey,
+    cacheConfigs,
+    putForbiddenConfigs,
     facebookAppIds = [],
     enableAnonymousUsers = defaults.enableAnonymousUsers,
     allowClientClassCreation = defaults.allowClientClassCreation,
@@ -206,6 +208,8 @@ class ParseServer {
       restAPIKey: restAPIKey,
       webhookKey: webhookKey,
       fileKey: fileKey,
+      cacheConfigs:cacheConfigs,
+      putForbiddenConfigs:putForbiddenConfigs,
       facebookAppIds: facebookAppIds,
       analyticsController: analyticsController,
       cacheController: cacheController,
@@ -271,7 +275,7 @@ class ParseServer {
     // This app serves the Parse API directly.
     // It's the equivalent of https://api.parse.com/1 in the hosted Parse API.
     var api = express();
-    api.use(timeout('5s'));
+
 
     //api.use("/apps", express.static(__dirname + "/public"));
     // File handling needs to be before default middlewares are applied

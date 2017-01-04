@@ -558,7 +558,7 @@ RestWrite.prototype.handleInstallation = function() {
     return;
   }
 
-  if (!this.query && !this.data.deviceToken && !this.data.installationId) {
+  if (!this.query && !this.data.deviceToken && !this.data.installationId&& !this.auth.installationId) {
     throw new Parse.Error(135,
                           'at least one ID field (deviceToken, installationId) ' +
                           'must be specified in this operation');
@@ -582,6 +582,11 @@ RestWrite.prototype.handleInstallation = function() {
   if (this.data.installationId) {
     this.data.installationId = this.data.installationId.toLowerCase();
   }
+  let installationId = this.data.installationId || this.auth.installationId;
+
+  if (installationId) {
+    installationId = installationId.toLowerCase();
+  }
 
   var promise = Promise.resolve();
 
@@ -597,9 +602,9 @@ RestWrite.prototype.handleInstallation = function() {
         objectId: this.query.objectId
     });
   }
-  if (this.data.installationId) {
+  if (installationId) {
     orQueries.push({
-      'installationId': this.data.installationId
+      'installationId':installationId
     });
   }
   if (this.data.deviceToken) {
@@ -619,7 +624,7 @@ RestWrite.prototype.handleInstallation = function() {
       if (this.query && this.query.objectId && result.objectId == this.query.objectId) {
         objectIdMatch = result;
       }
-      if (result.installationId == this.data.installationId) {
+      if (result.installationId == installationId) {
         installationIdMatch = result;
       }
       if (result.deviceToken == this.data.deviceToken) {
@@ -633,8 +638,9 @@ RestWrite.prototype.handleInstallation = function() {
         throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND,
                                 'Object not found for update.');
       }
-      if (this.data.installationId && objectIdMatch.installationId &&
-          this.data.installationId !== objectIdMatch.installationId) {
+      console.log(installationId,objectIdMatch.installationId);
+      if (installationId && objectIdMatch.installationId &&
+          installationId !== objectIdMatch.installationId) {
           throw new Parse.Error(136,
                                 'installationId may not be changed in this ' +
                                 'operation');
@@ -658,8 +664,12 @@ RestWrite.prototype.handleInstallation = function() {
       idMatch = objectIdMatch;
     }
 
-    if (this.data.installationId && installationIdMatch) {
+    if (installationId && installationIdMatch) {
       idMatch = installationIdMatch;
+    }
+    if (!this.query && !this.data.deviceType && !idMatch) {
+           throw new Parse.Error(135,
+               'deviceType must be specified in this operation');
     }
 
   }).then(() => {
@@ -667,7 +677,7 @@ RestWrite.prototype.handleInstallation = function() {
       if (!deviceTokenMatches.length) {
         return;
       } else if (deviceTokenMatches.length == 1 &&
-        (!deviceTokenMatches[0]['installationId'] || !this.data.installationId)
+        (!deviceTokenMatches[0]['installationId'] || !installationId)
       ) {
         // Single match on device token but none on installationId, and either
         // the passed object or the match is missing an installationId, so we
@@ -686,7 +696,7 @@ RestWrite.prototype.handleInstallation = function() {
         var delQuery = {
           'deviceToken': this.data.deviceToken,
           'installationId': {
-            '$ne': this.data.installationId
+            '$ne': installationId
           }
         };
         if (this.data.appIdentifier) {
